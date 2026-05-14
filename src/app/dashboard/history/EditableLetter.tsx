@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { Document, Packer, Paragraph, TextRun } from "docx";
+import { saveAs } from "file-saver";
 
 export default function EditableLetter({ 
   appealId, 
@@ -63,20 +65,40 @@ export default function EditableLetter({
           </button>
           <button 
             type="button"
-            onClick={() => {
-              const element = document.createElement("a");
-              const file = new Blob([letterContent || ""], {type: 'text/plain'});
-              element.href = URL.createObjectURL(file);
+            onClick={async () => {
+              const format = localStorage.getItem("reclaim_export_format") || "txt";
               const dosName = dateOfService ? dateOfService.replace(/\//g, '-') : 'Unknown_DOS';
-              element.download = `Appeal_${insuranceCompany || 'Payer'}_${dosName}.txt`;
-              document.body.appendChild(element);
-              element.click();
-              document.body.removeChild(element);
+              const baseName = `Appeal_${insuranceCompany || 'Payer'}_${dosName}`;
+
+              if (format === "docx") {
+                const lines = (letterContent || "").split("\n");
+                const doc = new Document({
+                  sections: [{
+                    properties: {},
+                    children: lines.map((line, i) =>
+                      new Paragraph({
+                        children: [new TextRun({ text: line, size: 24, font: "Calibri" })],
+                        spacing: { after: 120 },
+                      })
+                    ),
+                  }],
+                });
+                const blob = await Packer.toBlob(doc);
+                saveAs(blob, `${baseName}.docx`);
+              } else {
+                const element = document.createElement("a");
+                const file = new Blob([letterContent || ""], { type: "text/plain" });
+                element.href = URL.createObjectURL(file);
+                element.download = `${baseName}.txt`;
+                document.body.appendChild(element);
+                element.click();
+                document.body.removeChild(element);
+              }
               toast.success("Download started!");
             }}
             className="bg-white/10 hover:bg-white/20 text-white rounded p-1.5 transition-colors border border-white/5"
             aria-label="Download document"
-            title="Download (.txt)"
+            title={`Download (.${typeof window !== 'undefined' ? localStorage.getItem('reclaim_export_format') || 'txt' : 'txt'})`}
           >
              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
           </button>

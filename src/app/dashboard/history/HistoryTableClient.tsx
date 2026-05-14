@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { toast } from "sonner";
+import { Document, Packer, Paragraph, TextRun } from "docx";
 
 export default function HistoryTableClient({ initialAppeals }: { initialAppeals: any[] }) {
   const [appeals, setAppeals] = useState(initialAppeals || []);
@@ -67,16 +68,36 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
       // Get the full appeal objects for the selected IDs
       const selectedAppeals = appeals.filter(a => selectedIds.has(a.id));
       
-      selectedAppeals.forEach((appeal, index) => {
+      const format = localStorage.getItem("reclaim_export_format") || "txt";
+
+      for (let index = 0; index < selectedAppeals.length; index++) {
+        const appeal = selectedAppeals[index];
         const payer = (appeal.insurance_company || "Payer").replace(/[^a-z0-9]/gi, '_');
         const dos = (appeal.date_of_service || "UnknownDOS").replace(/[^a-z0-9]/gi, '_');
         const code = (appeal.medical_code || "Code").replace(/[^a-z0-9]/gi, '_');
         
-        // Ensure unique filenames if there are exact duplicates
-        const fileName = `Appeal_${payer}_${dos}_${code}_${index + 1}.txt`;
-        
-        zip.file(fileName, appeal.generated_letter || "");
-      });
+        if (format === "docx") {
+          const fileName = `Appeal_${payer}_${dos}_${code}_${index + 1}.docx`;
+          const lines = (appeal.generated_letter || "").split("\n");
+          const doc = new Document({
+            sections: [{
+              properties: {},
+              children: lines.map((line: string) =>
+                new Paragraph({
+                  children: [new TextRun({ text: line, size: 24, font: "Calibri" })],
+                  spacing: { after: 120 },
+                })
+              ),
+            }],
+          });
+          const blob = await Packer.toBlob(doc);
+          zip.file(fileName, blob);
+        } else {
+          // Ensure unique filenames if there are exact duplicates
+          const fileName = `Appeal_${payer}_${dos}_${code}_${index + 1}.txt`;
+          zip.file(fileName, appeal.generated_letter || "");
+        }
+      }
       
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, "Reclaim_Appeals_Export.zip");
