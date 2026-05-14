@@ -15,6 +15,7 @@ export default function SidebarNav() {
     { name: "Recycle Bin", href: "/dashboard/trash" },
     { name: "Billing", href: "/dashboard/billing" },
     { name: "Settings", href: "/dashboard/settings" },
+    { name: "Contact", href: "/dashboard/contact" },
   ];
 
   return (
