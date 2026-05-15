@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 
 function AuthContent() {
   const searchParams = useSearchParams();
@@ -21,7 +22,7 @@ function AuthContent() {
   const [showPassword, setShowPassword] = useState(false);
 
   // OTP verification step (sign-up only)
-  const [step, setStep] = useState<"credentials" | "otp">("credentials");
+  const [step, setStep] = useState<"credentials" | "otp" | "forgot_password">("credentials");
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
   const [otpResendCooldown, setOtpResendCooldown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -177,6 +178,28 @@ function AuthContent() {
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      setError("Please enter your email address.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/dashboard/settings`,
+      });
+      if (error) throw error;
+      toast.success("Password reset link sent! Check your email.");
+      setStep("credentials");
+    } catch (err: any) {
+      setError(err.message || "Failed to send reset link.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ── OTP Verification Screen ──
   if (step === "otp") {
     return (
@@ -267,6 +290,66 @@ function AuthContent() {
     );
   }
 
+  // ── Forgot Password Screen ──
+  if (step === "forgot_password") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-950 p-4 font-sans relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
+
+        <Card className="w-full max-w-md shadow-2xl border-white/10 bg-white/5 backdrop-blur-xl text-white relative z-10">
+          <form onSubmit={handleResetPassword}>
+            <CardHeader className="space-y-3 text-center mb-2 mt-4">
+              <CardTitle className="text-2xl font-extrabold tracking-tight">Reset Password</CardTitle>
+              <CardDescription className="font-medium text-neutral-400">
+                Enter your email and we'll send you a secure link to reset your password.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-5">
+              {error && (
+                <div className="bg-red-500/10 text-red-400 border border-red-500/20 p-3 rounded-md text-sm font-medium">
+                  {error}
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="reset-email" className="text-neutral-300">Email Address</Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="bg-neutral-900/50 border-white/10 text-white placeholder:text-neutral-600 focus-visible:ring-indigo-500"
+                />
+              </div>
+            </CardContent>
+
+            <CardFooter className="flex flex-col space-y-4 pt-4 mb-2">
+              <Button
+                type="submit"
+                className="w-full h-12 text-md transition-all hover:scale-[1.02] active:scale-[0.98] bg-white text-black hover:bg-neutral-200 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                disabled={loading}
+              >
+                {loading ? "Sending Link..." : "Send Reset Link"}
+              </Button>
+              <button
+                type="button"
+                className="text-sm text-black hover:text-neutral-700 transition-colors font-semibold mt-2"
+                onClick={() => {
+                  setStep("credentials");
+                  setError(null);
+                }}
+              >
+                ← Back to Login
+              </button>
+            </CardFooter>
+          </form>
+        </Card>
+      </div>
+    );
+  }
+
   // ── Credentials Screen (Sign Up / Login) ──
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-950 p-4 font-sans relative overflow-hidden">
@@ -301,10 +384,24 @@ function AuthContent() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-neutral-300">
-                {isSignUp ? "Create a new password " : "Type in your reclaim password that you set up before for this account "}
-                {isSignUp && <span className="text-xs font-normal text-white">(please save it somewhere safe!)</span>}
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-neutral-300">
+                  {isSignUp ? "Create a new password " : "Type in your reclaim password "}
+                  {isSignUp && <span className="text-xs font-normal text-white">(save it safely!)</span>}
+                </Label>
+                {!isSignUp && (
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setStep("forgot_password");
+                      setError(null);
+                    }}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+                  >
+                    Forgot Password?
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <Input
                   id="password"
