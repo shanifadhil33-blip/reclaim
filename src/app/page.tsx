@@ -4,7 +4,7 @@ import { buttonVariants } from '@/components/ui/button';
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-50 flex flex-col font-sans selection:bg-indigo-500/30 overflow-x-hidden">
-      <header className="absolute top-0 w-full p-6 flex justify-between items-center z-10">
+      <header className="absolute top-0 w-full p-6 flex justify-between items-center z-50">
         <div className="text-2xl font-semibold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-neutral-100 to-neutral-400">
           Reclaim
         </div>
