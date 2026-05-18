@@ -48,7 +48,8 @@ export default function LandingPage() {
       </main>
 
       {/* How It Works */}
-      <section className="relative z-10 py-24 mt-16 border-t border-white/5 bg-neutral-950">
+      <section className="relative z-10 py-24 mt-16">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none" />
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-semibold tracking-tight text-white mb-4">
@@ -120,7 +121,7 @@ export default function LandingPage() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-neutral-900 bg-neutral-950 py-8 relative z-10 text-center text-sm text-neutral-500">
+      <footer className="border-t border-white/5 py-8 relative z-10 text-center text-sm text-neutral-500">
         <div className="flex justify-center gap-6 mb-4">
           <Link href="/hipaa" className="hover:text-neutral-300 transition-colors">HIPAA Compliance</Link>
           <Link href="/privacy" className="hover:text-neutral-300 transition-colors">Privacy Policy</Link>
