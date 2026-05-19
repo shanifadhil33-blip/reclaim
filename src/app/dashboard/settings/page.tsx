@@ -3,18 +3,14 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 
 export default function SettingsPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [otpCode, setOtpCode] = useState("");
-  const [mode, setMode] = useState<"standard" | "forgot" | "otp">("standard");
-  const [statusMsg, setStatusMsg] = useState<{ type: "error" | "success", text: string } | null>(null);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
 
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState<{ type: "error" | "success", text: string } | null>(null);
@@ -29,6 +25,8 @@ export default function SettingsPage() {
        if (user) {
          setUserEmail(user.email ?? null);
          setUserId(user.id);
+         setUserAvatar(user.user_metadata?.avatar_url ?? null);
+         setUserName(user.user_metadata?.full_name ?? null);
        }
     });
     // Load saved export preference
@@ -61,75 +59,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleChangePasswordClick = async () => {
-    setStatusMsg(null);
-    if (!currentPassword || !newPassword) {
-      return setStatusMsg({ type: "error", text: "Fill in both fields" });
-    }
-    if (!userEmail) return;
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: userEmail,
-      password: currentPassword
-    });
-
-    if (signInError) {
-      return setStatusMsg({ type: "error", text: "Current password incorrect." });
-    }
-
-    const { error: updateError } = await supabase.auth.updateUser({
-       password: newPassword
-    });
-
-    if (updateError) {
-       setStatusMsg({ type: "error", text: updateError.message });
-    } else {
-       setStatusMsg({ type: "success", text: "Password updated successfully!" });
-       setCurrentPassword("");
-       setNewPassword("");
-    }
-  };
-
-  const handleForgotPassword = async () => {
-    if (!userEmail) return;
-    setStatusMsg(null);
-    const { error } = await supabase.auth.resetPasswordForEmail(userEmail);
-    if (error) {
-       setStatusMsg({ type: "error", text: error.message });
-    } else {
-       setMode("otp");
-       setStatusMsg({ type: "success", text: "OTP sent to your email!" });
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    setStatusMsg(null);
-    if (!userEmail || !otpCode || !newPassword) return setStatusMsg({ type: "error", text: "Fill in OTP and New Password" });
-    
-    const { error } = await supabase.auth.verifyOtp({
-       email: userEmail,
-       token: otpCode,
-       type: "recovery"
-    });
-
-    if (error) {
-       setStatusMsg({ type: "error", text: "Invalid OTP code." });
-       return;
-    }
-
-    const { error: updateError } = await supabase.auth.updateUser({
-       password: newPassword
-    });
-
-    if (updateError) {
-       setStatusMsg({ type: "error", text: updateError.message });
-    } else {
-       setStatusMsg({ type: "success", text: "Password safely reset!" });
-       setMode("standard");
-       setOtpCode("");
-       setNewPassword("");
-    }
-  };
-
   return (
     <div className="w-full max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="mb-8">
@@ -144,12 +73,31 @@ export default function SettingsPage() {
       <div className="shadow-2xl border border-white/10 bg-white/5 backdrop-blur-xl text-white rounded-xl p-8 space-y-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-[80px]" />
         
-        {/* Account Profile */}
+        {/* Account Profile — Google Identity */}
         <div>
            <h2 className="text-xl font-bold mb-1">Account Profile</h2>
-           <p className="text-sm text-neutral-400 mb-4">You are securely authenticated as:</p>
-           <div className="bg-neutral-900/50 border border-white/10 rounded-md p-3 text-emerald-400 font-mono text-sm max-w-sm">
-             {userEmail || "Loading..."}
+           <p className="text-sm text-neutral-400 mb-4">Authenticated via Google.</p>
+           <div className="flex items-center gap-4 bg-neutral-900/50 border border-white/10 rounded-lg p-4 max-w-md">
+             {userAvatar ? (
+               <img src={userAvatar} alt="Profile" className="w-10 h-10 rounded-full border border-white/10" referrerPolicy="no-referrer" />
+             ) : (
+               <div className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 font-bold text-sm">
+                 {userEmail?.charAt(0).toUpperCase() || "?"}
+               </div>
+             )}
+             <div className="min-w-0">
+               {userName && <p className="text-sm font-semibold text-white truncate">{userName}</p>}
+               <p className="text-sm text-emerald-400 font-mono truncate">{userEmail || "Loading..."}</p>
+             </div>
+             <div className="ml-auto flex items-center gap-1.5 text-[11px] text-neutral-500 flex-shrink-0">
+               <svg viewBox="0 0 24 24" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
+                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+               </svg>
+               Google
+             </div>
            </div>
         </div>
 
@@ -222,56 +170,18 @@ export default function SettingsPage() {
            </Button>
         </div>
 
-        {/* Security */}
+        {/* Security Info */}
         <div className="border-t border-white/10 pt-8 max-w-md">
-           <h2 className="text-xl font-bold mb-1">Security</h2>
-           <p className="text-sm text-neutral-400 mb-6">Manage your password to preserve HIPAA compliance integrity.</p>
-           
-           {statusMsg && (
-             <div className={`p-3 mb-4 rounded-md text-sm font-medium border ${statusMsg.type === 'error' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
-               {statusMsg.text}
-             </div>
-           )}
-
-           {mode === "standard" && (
-             <Button onClick={handleForgotPassword} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_0_15px_rgba(79,70,229,0.3)] transition-all">
-               Forgot Password
-             </Button>
-           )}
-
-           {mode === "forgot" && (
-             <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-               <div>
-                  <Label className="text-neutral-300">Current Password</Label>
-                  <Input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} className="bg-neutral-900/50 border-white/10 text-white mt-1"/>
-               </div>
-               <div>
-                  <Label className="text-neutral-300">New Password</Label>
-                  <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="bg-neutral-900/50 border-white/10 text-white mt-1"/>
-               </div>
-               <div className="flex gap-4 pt-2">
-                 <Button onClick={handleChangePasswordClick} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_0_15px_rgba(79,70,229,0.3)] transition-all">Update Password</Button>
-                 <Button variant="ghost" onClick={() => { setMode("standard"); setStatusMsg(null); setCurrentPassword(""); setNewPassword(""); }} className="text-neutral-400 hover:text-white hover:bg-white/5 transition-all">Cancel</Button>
-               </div>
-             </div>
-           )}
-
-           {mode === "otp" && (
-             <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-               <div>
-                  <Label className="text-neutral-300">6-Digit OTP Code (Sent to Email)</Label>
-                  <Input type="text" value={otpCode} onChange={e => setOtpCode(e.target.value)} className="bg-neutral-900/50 border-white/10 text-emerald-400 mt-1 tracking-[0.25em] text-center font-mono text-xl py-6"/>
-               </div>
-               <div>
-                  <Label className="text-neutral-300">Set New Password</Label>
-                  <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="bg-neutral-900/50 border-white/10 text-white mt-1"/>
-               </div>
-               <div className="flex gap-4 pt-2">
-                 <Button onClick={handleVerifyOtp} className="bg-emerald-500 text-white hover:bg-emerald-600 shadow-[0_0_15px_rgba(16,185,129,0.3)]">Verify & Reset</Button>
-                 <Button variant="ghost" onClick={() => { setMode("standard"); setStatusMsg(null); }} className="text-neutral-400 hover:text-white hover:bg-white/5 transition-all">Cancel</Button>
-               </div>
-             </div>
-           )}
+           <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
+             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400"><path d="m12 22-7-3.5v-6c0-4.4 3.6-8 8-8s8 3.6 8 8v6z"/><path d="m9 12 2 2 4-4"/></svg>
+             Security
+           </h2>
+           <p className="text-sm text-neutral-400 mb-4">Your account is secured by Google OAuth 2.0 — no passwords are stored on our servers.</p>
+           <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-lg p-4 text-sm text-emerald-300/80 space-y-1">
+             <p>✓ Two-factor authentication managed by Google</p>
+             <p>✓ Session encryption via Supabase Auth</p>
+             <p>✓ No passwords stored or transmitted</p>
+           </div>
         </div>
 
         {/* Logout */}

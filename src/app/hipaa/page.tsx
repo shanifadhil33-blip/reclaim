@@ -33,12 +33,12 @@ export default function HIPAAPage() {
 
           <h2 className="text-2xl font-semibold text-white pt-6">4. Authentication & Access Control</h2>
           <p className="leading-relaxed">
-            Reclaim uses Supabase Auth with email/password authentication and OTP (One-Time Password) verification for new accounts. Sessions are cryptographically signed and expire automatically. No Reclaim employee has direct access to your unencrypted patient data.
+            Reclaim uses Supabase Auth with Google OAuth 2.0 for secure, passwordless authentication. No passwords are stored on our servers. Sessions are cryptographically signed and expire automatically. No Reclaim employee has direct access to your unencrypted patient data.
           </p>
 
           <h2 className="text-2xl font-semibold text-white pt-6">5. Your Responsibilities</h2>
           <p className="leading-relaxed">
-            As a HIPAA-covered entity or business associate, you are responsible for ensuring that your use of Reclaim complies with your own organization's HIPAA policies. This includes using the tool on secured devices, maintaining strong passwords, and logging out of shared workstations.
+            As a HIPAA-covered entity or business associate, you are responsible for ensuring that your use of Reclaim complies with your own organization's HIPAA policies. This includes using the tool on secured devices, keeping your Google account secure, and logging out of shared workstations.
           </p>
 
           <h2 className="text-2xl font-semibold text-white pt-6">6. Contact</h2>
