@@ -42,11 +42,11 @@ export async function GET(request: Request) {
               // Check if this new user is a Pro subscriber (Pro users bypass the limit)
               const { data: profile } = await supabase
                 .from('profiles')
-                .select('subscription_tier')
+                .select('subscription_status')
                 .eq('id', user.id)
                 .single()
 
-              if (!profile || profile.subscription_tier !== 'pro') {
+              if (!profile || profile.subscription_status !== 'active') {
                 // Sign them out and redirect to the blocked page
                 await supabase.auth.signOut()
                 return NextResponse.redirect(
