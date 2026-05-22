@@ -18,7 +18,7 @@ export default function LandingPage() {
         </nav>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 relative">
+      <main className="min-h-screen flex flex-col items-center justify-center text-center px-4 relative pt-24">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-600/10 rounded-full blur-[100px] pointer-events-none" />
 
