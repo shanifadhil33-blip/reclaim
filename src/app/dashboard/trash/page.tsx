@@ -16,6 +16,14 @@ export default async function TrashPage() {
 
   const { data: appeals, error } = await getTrashedAppeals();
 
+  if (error) {
+    console.error("[TRASH] Query failed:", {
+      error,
+      userId: user.id,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   return (
     <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">

@@ -21,6 +21,16 @@ export default async function HistoryPage() {
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
+  if (error) {
+    console.error("[HISTORY] Supabase query failed:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      userId: user.id,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   return (
     <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">

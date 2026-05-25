@@ -6,10 +6,7 @@ import EditableLetter from "./EditableLetter";
 import { DeleteAppealButton } from "./HistoryActions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import JSZip from "jszip";
-import { saveAs } from "file-saver";
 import { toast } from "sonner";
-import { Document, Packer, Paragraph, TextRun } from "docx";
 
 export default function HistoryTableClient({ initialAppeals }: { initialAppeals: any[] }) {
   const [appeals, setAppeals] = useState(initialAppeals || []);
@@ -63,6 +60,12 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
     setIsExporting(true);
     
     try {
+      const [{ default: JSZip }, { saveAs }, docxModule] = await Promise.all([
+        import("jszip"),
+        import("file-saver"),
+        import("docx"),
+      ]);
+      const { Document, Packer, Paragraph, TextRun } = docxModule;
       const zip = new JSZip();
       
       // Get the full appeal objects for the selected IDs

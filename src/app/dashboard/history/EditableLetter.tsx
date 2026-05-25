@@ -4,8 +4,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import { Document, Packer, Paragraph, TextRun } from "docx";
-import { saveAs } from "file-saver";
 
 export default function EditableLetter({ 
   appealId, 
@@ -71,6 +69,10 @@ export default function EditableLetter({
               const baseName = `Appeal_${insuranceCompany || 'Payer'}_${dosName}`;
 
               if (format === "docx") {
+                const [{ Document, Packer, Paragraph, TextRun }, { saveAs }] = await Promise.all([
+                  import("docx"),
+                  import("file-saver"),
+                ]);
                 const lines = (letterContent || "").split("\n");
                 const doc = new Document({
                   sections: [{
