@@ -106,7 +106,8 @@ export async function POST(req: Request) {
     if (profile) {
       const now = new Date();
       const trialEndsAt = new Date(profile.trial_ends_at);
-      if (profile.subscription_status !== "active" && now > trialEndsAt) {
+      const hasActiveSubscription = ['active', 'trialing'].includes(profile.subscription_status);
+      if (!hasActiveSubscription && now > trialEndsAt) {
          return NextResponse.json(
            { 
              error: "Your 14-day free trial has expired.", 

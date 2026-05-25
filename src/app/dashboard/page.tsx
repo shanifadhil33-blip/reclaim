@@ -80,12 +80,31 @@ export default function ReclaimDashboard() {
           .single();
         if (profile) {
           const isActive = profile.subscription_status === "active" || new Date() <= new Date(profile.trial_ends_at);
-          trialActiveRef.current = isActive;
+          if (isActive) {
+            trialActiveRef.current = isActive;
+            return;
+          }
+          
+          // DB says not active — verify with Polar API as a safety net
+          // This catches cases where webhooks failed or corrupted the status
+          try {
+            const res = await fetch("/api/verify-subscription", { method: "POST" });
+            if (res.ok) {
+              const data = await res.json();
+              if (data.status === "active") {
+                trialActiveRef.current = true;
+                return;
+              }
+            }
+          } catch { /* verification failed — fall through to DB value */ }
+
+          trialActiveRef.current = false;
         }
       } catch { /* fail open — let the API catch it */ }
     };
     checkTrial();
   }, []);
+
 
   // Guard: redirect to billing if trial expired
   const guardTrial = (): boolean => {

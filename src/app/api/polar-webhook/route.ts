@@ -2,6 +2,33 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { validateEvent, WebhookVerificationError } from '@polar-sh/sdk/webhooks';
 
+/**
+ * Map Polar's subscription status to our internal DB status.
+ * Polar statuses: 'active', 'trialing', 'past_due', 'canceled', 'incomplete', 'unpaid'
+ * Our DB statuses: 'trial', 'active', 'canceled', 'past_due'
+ */
+function mapPolarStatus(polarStatus: string, cancelAtPeriodEnd?: boolean): string {
+  // If user canceled but still has time left, keep them active
+  if (cancelAtPeriodEnd && polarStatus === 'active') return 'active';
+
+  switch (polarStatus) {
+    case 'active':
+    case 'trialing':  // Polar's trial on a paid subscription = active for us
+      return 'active';
+    case 'past_due':
+      return 'past_due';
+    case 'canceled':
+    case 'revoked':
+    case 'unpaid':
+    case 'incomplete':
+      return 'canceled';
+    default:
+      // Fail open — don't lock out paying users on unknown statuses
+      console.warn(`[WEBHOOK] Unknown Polar status: "${polarStatus}" — defaulting to 'active'`);
+      return 'active';
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const rawBody = await req.text();
@@ -35,7 +62,16 @@ export async function POST(req: Request) {
 
     const supabase = createAdminClient();
 
-    if (eventType === 'subscription.created' || eventType === 'subscription.updated') {
+    // Handle subscription lifecycle events
+    const handledEvents = [
+      'subscription.created',
+      'subscription.updated',
+      'subscription.active',
+      'subscription.revoked',
+      'subscription.canceled',
+    ];
+
+    if (handledEvents.includes(eventType)) {
       const subscription = payload.data;
       
       // Try user_id from metadata first
@@ -53,8 +89,12 @@ export async function POST(req: Request) {
       }
 
       if (userId) {
-        const isActive = subscription.status === 'active';
-        const newStatus = isActive ? 'active' : 'canceled';
+        // For revoked events, always set to canceled
+        const newStatus = eventType === 'subscription.revoked'
+          ? 'canceled'
+          : mapPolarStatus(subscription.status, subscription.cancel_at_period_end);
+
+        console.log(`[WEBHOOK] Polar status: "${subscription.status}", cancel_at_period_end: ${subscription.cancel_at_period_end}, mapped to: "${newStatus}"`);
         console.log(`[WEBHOOK] Updating user ${userId} → subscription_status: ${newStatus}`);
         
         const { error, data } = await supabase
@@ -88,7 +128,7 @@ export async function POST(req: Request) {
             }
           }
         } else {
-          console.log(`[WEBHOOK] ✅ User ${userId} upgraded to ${newStatus}. Updated rows:`, data?.length);
+          console.log(`[WEBHOOK] ✅ User ${userId} updated to ${newStatus}. Updated rows:`, data?.length);
         }
       } else {
         console.error('[WEBHOOK] Could not identify user — no metadata.user_id and no customer email match');
@@ -101,3 +141,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
   }
 }
+

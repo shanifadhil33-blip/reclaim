@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Polar } from "@polar-sh/sdk";
 
 export default async function BillingPage() {
   const supabase = await createClient();
@@ -12,9 +14,62 @@ export default async function BillingPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("trial_ends_at, subscription_status")
+    .select("trial_ends_at, subscription_status, polar_subscription_id")
     .eq("id", user.id)
     .single();
+
+  // Server-side verification: if DB says not active, check Polar directly
+  let verifiedStatus = profile?.subscription_status;
+  
+  if (verifiedStatus !== 'active' && process.env.POLAR_API_TOKEN) {
+    try {
+      const polar = new Polar({ accessToken: process.env.POLAR_API_TOKEN });
+      
+      // Try by subscription ID first
+      if (profile?.polar_subscription_id) {
+        try {
+          const sub = await polar.subscriptions.get({ id: profile.polar_subscription_id });
+          if (sub && (sub.status === 'active' || sub.status === 'trialing')) {
+            verifiedStatus = 'active';
+            const adminSupabase = createAdminClient();
+            await adminSupabase.from('profiles').update({ subscription_status: 'active' }).eq('id', user.id);
+          }
+        } catch { /* subscription lookup failed */ }
+      }
+
+      // Fallback: look up by email
+      if (verifiedStatus !== 'active' && user.email) {
+        try {
+          const customersResult = await polar.customers.list({ email: user.email });
+          for await (const page of customersResult) {
+            const customers = page.result?.items || [];
+            for (const customer of customers) {
+              const subsResult = await polar.subscriptions.list({ customerId: customer.id, active: true });
+              for await (const subPage of subsResult) {
+                const subs = subPage.result?.items || [];
+                for (const sub of subs) {
+                  if (sub.status === 'active' || sub.status === 'trialing') {
+                    verifiedStatus = 'active';
+                    const adminSupabase = createAdminClient();
+                    await adminSupabase.from('profiles').update({ 
+                      subscription_status: 'active',
+                      polar_subscription_id: sub.id 
+                    }).eq('id', user.id);
+                    break;
+                  }
+                }
+                if (verifiedStatus === 'active') break;
+              }
+              if (verifiedStatus === 'active') break;
+            }
+            if (verifiedStatus === 'active') break;
+          }
+        } catch { /* email lookup failed */ }
+      }
+    } catch (e) {
+      console.error('[BILLING] Polar verification failed:', e);
+    }
+  }
 
   const baseUrl = process.env.NEXT_PUBLIC_POLAR_CHECKOUT_URL || "#";
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -29,7 +84,8 @@ export default async function BillingPage() {
   const diffTime = trialEndsAt.getTime() - now.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   const isExpired = diffDays <= 0;
-  const isPremium = profile?.subscription_status === "active";
+  const isPremium = verifiedStatus === "active";
+
 
   return (
     <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
