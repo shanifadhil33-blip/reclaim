@@ -211,7 +211,40 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
 
     try {
       const pdfjsLib = await import("pdfjs-dist");
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+      
+      // Resilient worker loading: try multiple CDNs with fallback
+      const version = pdfjsLib.version;
+      const workerCDNs = [
+        `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/build/pdf.worker.min.mjs`,
+        `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`,
+        `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.mjs`,
+      ];
+
+      let workerLoaded = false;
+      for (const cdnUrl of workerCDNs) {
+        try {
+          // Verify the CDN URL is reachable before using it
+          const probe = await fetch(cdnUrl, { method: "HEAD" });
+          if (probe.ok) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = cdnUrl;
+            workerLoaded = true;
+            console.log(`[PDF] Worker loaded from: ${cdnUrl}`);
+            break;
+          }
+        } catch {
+          console.warn(`[PDF] CDN unreachable: ${cdnUrl}`);
+        }
+      }
+
+      if (!workerLoaded) {
+        // Last resort: use inline worker (no CDN needed, slightly slower but always works)
+        console.warn("[PDF] All CDNs failed — using inline worker fallback");
+        const workerBlob = new Blob(
+          [`importScripts("https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/build/pdf.worker.min.mjs")`],
+          { type: "application/javascript" }
+        );
+        pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(workerBlob);
+      }
 
       // First pass: count total pages across all files
       const pdfDocs: { pdf: any; file: File }[] = [];
