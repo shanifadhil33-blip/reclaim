@@ -5,10 +5,12 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -41,6 +43,7 @@ export default function ReclaimDashboard() {
   const setRows = useExtractionStore((s) => s.setRows);
   const isExtracting = useExtractionStore((s) => s.isExtracting);
   const extractionProgress = useExtractionStore((s) => s.extractionProgress);
+  const extractionPhase = useExtractionStore((s) => s.extractionPhase);
   const queuedFiles = useExtractionStore((s) => s.queuedFiles);
   const progressPercent = useExtractionStore((s) => s.progressPercent);
   const progressPagesProcessed = useExtractionStore((s) => s.progressPagesProcessed);
@@ -60,6 +63,18 @@ export default function ReclaimDashboard() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+
+  // ── Editable claim fields (Human-in-the-Loop verification) ──
+  const [editPatientAccount, setEditPatientAccount] = useState("");
+  const [editPatientName, setEditPatientName] = useState("");
+  const [editDateOfService, setEditDateOfService] = useState("");
+  const [editBilledCPT, setEditBilledCPT] = useState("");
+  const [editDenialCode, setEditDenialCode] = useState("");
+  const [editDenialReason, setEditDenialReason] = useState("");
+  const [editBilledAmount, setEditBilledAmount] = useState("");
+  const [editPaidAmount, setEditPaidAmount] = useState("");
+  const [editPayerName, setEditPayerName] = useState("");
+  const [isDataVerified, setIsDataVerified] = useState(false);
   const router = useRouter();
   const trialActiveRef = useRef<boolean | null>(null); // null = not yet checked
 
@@ -132,37 +147,93 @@ export default function ReclaimDashboard() {
   };
 
   // ── Modal Controls ──
-  const openModal = (row: DenialRow) => { setSelectedRowId(row.id); setClinicalNotes(row.clinicalNotes || ""); };
-  const closeModal = () => { setSelectedRowId(null); setClinicalNotes(""); };
+  const openModal = (row: DenialRow) => {
+    setSelectedRowId(row.id);
+    setClinicalNotes(row.clinicalNotes || "");
+    // Pre-populate editable fields
+    setEditPatientAccount(row.patientAccount || "");
+    setEditPatientName(row.patientName || "");
+    setEditDateOfService(row.dateOfService || "");
+    setEditBilledCPT(row.billedCPT || "");
+    setEditDenialCode(row.denialCode || "");
+    setEditDenialReason(row.denialReason || "");
+    setEditBilledAmount(row.billedAmount || "");
+    setEditPaidAmount(row.paidAmount || "");
+    setEditPayerName(row.payerName || "");
+    setIsDataVerified(false); // Reset verification on each open
+  };
+  const closeModal = () => { setSelectedRowId(null); setClinicalNotes(""); setIsDataVerified(false); };
   const selectedIndex = rows.findIndex(r => r.id === selectedRowId);
   const hasNext = selectedIndex !== -1 && selectedIndex < rows.length - 1;
   const hasPrev = selectedIndex > 0;
   const handleNext = () => { if (hasNext) openModal(rows[selectedIndex + 1]); };
   const handlePrev = () => { if (hasPrev) openModal(rows[selectedIndex - 1]); };
 
+  // ── Persist edits back to store when fields change ──
+  const persistFieldEdits = useCallback(() => {
+    if (!selectedRow) return;
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === selectedRow.id
+          ? {
+              ...r,
+              patientAccount: editPatientAccount,
+              patientName: editPatientName,
+              dateOfService: editDateOfService,
+              billedCPT: editBilledCPT,
+              denialCode: editDenialCode,
+              denialReason: editDenialReason,
+              billedAmount: editBilledAmount,
+              paidAmount: editPaidAmount,
+              payerName: editPayerName,
+            }
+          : r
+      )
+    );
+  }, [selectedRow, editPatientAccount, editPatientName, editDateOfService, editBilledCPT, editDenialCode, editDenialReason, editBilledAmount, editPaidAmount, editPayerName, setRows]);
+
   // ── Generate Appeal ──
   const handleGenerate = async () => {
     if (!selectedRow) return;
     if (!guardTrial()) return;
     if (!clinicalNotes.trim()) { toast.warning("Please paste clinical notes before generating."); return; }
+    if (!isDataVerified) { toast.warning("Please verify the extracted data before generating."); return; }
+
+    // Persist any edits the user made before generating
+    persistFieldEdits();
+
     setIsGenerating(true);
     try {
       const res = await fetch("/api/appeals/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          insuranceCompany: selectedRow.payerName,
-          dateOfService: selectedRow.dateOfService,
-          billedCode: selectedRow.billedCPT,
-          denialReason: `${selectedRow.denialCode} — ${selectedRow.denialReason}`,
+          insuranceCompany: editPayerName,
+          dateOfService: editDateOfService,
+          billedCode: editBilledCPT,
+          denialReason: `${editDenialCode} — ${editDenialReason}`,
           clinicalNotes,
-          patientAccount: selectedRow.patientAccount,
+          patientAccount: editPatientAccount,
         }),
       });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.message || data.error || "Failed to generate appeal.");
 
-      setRows(prev => prev.map(r => r.id === selectedRow.id ? { ...r, status: "completed" as ClaimStatus, clinicalNotes, generatedLetter: data.letter } : r));
+      setRows(prev => prev.map(r => r.id === selectedRow.id ? {
+        ...r,
+        status: "completed" as ClaimStatus,
+        clinicalNotes,
+        generatedLetter: data.letter,
+        patientAccount: editPatientAccount,
+        patientName: editPatientName,
+        dateOfService: editDateOfService,
+        billedCPT: editBilledCPT,
+        denialCode: editDenialCode,
+        denialReason: editDenialReason,
+        billedAmount: editBilledAmount,
+        paidAmount: editPaidAmount,
+        payerName: editPayerName,
+      } : r));
       toast.success("Appeal letter generated & saved!");
     } catch (err: any) { toast.error(err.message || "An error occurred."); }
     finally { setIsGenerating(false); }
@@ -201,8 +272,13 @@ export default function ReclaimDashboard() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse rounded-full" />
               </div>
-              <p className="text-neutral-400 text-sm text-center leading-relaxed">{extractionProgress}</p>
-              {rows.length > 0 && (
+               <p className="text-neutral-400 text-sm text-center leading-relaxed">{extractionProgress}</p>
+               {extractionPhase && (
+                 <p className="text-indigo-400/80 text-xs text-center font-medium animate-pulse">
+                   {extractionPhase}
+                 </p>
+               )}
+               {rows.length > 0 && (
                 <p className="text-emerald-400/80 text-xs text-center font-medium">
                   {rows.length} denial{rows.length !== 1 ? "s" : ""} found so far...
                 </p>
@@ -474,19 +550,87 @@ export default function ReclaimDashboard() {
 
           {selectedRow && (
             <div className="space-y-6 my-4">
-              {/* Claim Summary */}
+              {/* Editable Claim Fields — Human-in-the-Loop Verification */}
               <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 flex flex-col gap-4">
-                <div className="flex flex-wrap gap-x-6 gap-y-2 items-center">
-                  <div className="flex items-center gap-2"><span className="text-xs text-neutral-500 uppercase tracking-widest font-bold">Patient</span><span className="font-medium text-neutral-200">{selectedRow.patientAccount}</span></div>
-                  <div className="w-px h-4 bg-white/10 hidden sm:block"></div>
-                  <div className="flex items-center gap-2"><span className="text-xs text-neutral-500 uppercase tracking-widest font-bold">DOS</span><span className="font-medium text-neutral-200">{selectedRow.dateOfService}</span></div>
-                  <div className="w-px h-4 bg-white/10 hidden sm:block"></div>
-                  <div className="flex items-center gap-2"><span className="text-xs text-neutral-500 uppercase tracking-widest font-bold">Code</span><span className="bg-neutral-800 px-2 py-0.5 rounded text-sm font-mono border border-white/5 text-neutral-200">{selectedRow.billedCPT}</span></div>
-                  <div className="w-px h-4 bg-white/10 hidden sm:block"></div>
-                  <div className="flex items-center gap-2"><span className="text-xs text-neutral-500 uppercase tracking-widest font-bold">Payer</span><span className="font-medium text-neutral-200">{selectedRow.payerName}</span></div>
+                <div className="flex items-center gap-2 mb-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636-2.87L13.637 3.59a1.914 1.914 0 0 0-3.274 0z"/><path d="M12 17h.01"/></svg>
+                  <span className="text-xs text-amber-400 font-semibold uppercase tracking-wider">Verify & Correct Extracted Data</span>
                 </div>
-                <div className="bg-white/5 rounded-lg p-3 text-sm flex items-start gap-3 border border-white/10">
-                  <div><span className="font-bold text-white block mb-0.5">Denial: <span className="text-red-400 font-mono">{selectedRow.denialCode}</span></span><span className="text-neutral-300 leading-relaxed">{selectedRow.denialReason}</span></div>
+                <p className="text-xs text-neutral-500 leading-relaxed -mt-2">These fields were extracted by AI. Compare them against your original EOB and correct any errors before generating the appeal.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-neutral-400 font-medium">Patient Account</Label>
+                    <Input
+                      value={editPatientAccount}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditPatientAccount(e.target.value)}
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-neutral-400 font-medium">Patient Name</Label>
+                    <Input
+                      value={editPatientName}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditPatientName(e.target.value)}
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-neutral-400 font-medium">Date of Service</Label>
+                    <Input
+                      value={editDateOfService}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditDateOfService(e.target.value)}
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-neutral-400 font-medium">Billed CPT Code</Label>
+                    <Input
+                      value={editBilledCPT}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditBilledCPT(e.target.value)}
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 font-mono focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-neutral-400 font-medium">Denial Code</Label>
+                    <Input
+                      value={editDenialCode}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditDenialCode(e.target.value)}
+                      className="bg-white/5 border-white/10 text-red-400 text-sm h-9 font-mono focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-neutral-400 font-medium">Payer Name</Label>
+                    <Input
+                      value={editPayerName}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditPayerName(e.target.value)}
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-neutral-400 font-medium">Billed Amount</Label>
+                    <Input
+                      value={editBilledAmount}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditBilledAmount(e.target.value)}
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 font-mono focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-neutral-400 font-medium">Paid Amount</Label>
+                    <Input
+                      value={editPaidAmount}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditPaidAmount(e.target.value)}
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 font-mono focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1 mt-1">
+                  <Label className="text-xs text-neutral-400 font-medium">Denial Reason</Label>
+                  <Textarea
+                    value={editDenialReason}
+                    onChange={(e) => setEditDenialReason(e.target.value)}
+                    className="bg-white/5 border-white/10 text-neutral-300 text-sm min-h-[60px] resize-y focus:border-indigo-500"
+                    rows={2}
+                  />
                 </div>
               </div>
 
@@ -500,11 +644,25 @@ export default function ReclaimDashboard() {
                     <p className="text-xs text-neutral-400 leading-relaxed">Copy the doctor's raw clinical notes from your EMR for this date of service.</p>
                   </div>
                   <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-xl focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all overflow-hidden flex flex-col">
-                    <Textarea id="clinicalNotes" autoFocus placeholder="Paste raw notes here (Ctrl+V)..." className="min-h-[220px] bg-transparent border-0 text-white placeholder:text-neutral-600 focus-visible:ring-0 resize-y text-base p-4 custom-scrollbar" value={clinicalNotes} onChange={(e) => setClinicalNotes(e.target.value)} />
-                    <div className="bg-black/20 p-3 border-t border-white/5 flex items-center justify-end shrink-0">
-                      <Button type="button" onClick={handleGenerate} disabled={isGenerating || !clinicalNotes.trim()} className="bg-indigo-600 hover:bg-indigo-500 text-white hover:shadow-[0_0_20px_rgba(79,70,229,0.5)] transition-all duration-300 ease-in-out rounded-lg h-10 px-8 font-medium text-sm border border-indigo-500/50">
-                        {isGenerating ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>Analyzing...</span> : "Generate Appeal"}
-                      </Button>
+                    <Textarea id="clinicalNotes" autoFocus placeholder="Paste raw notes here (Ctrl+V)..." className="min-h-[180px] bg-transparent border-0 text-white placeholder:text-neutral-600 focus-visible:ring-0 resize-y text-base p-4 custom-scrollbar" value={clinicalNotes} onChange={(e) => setClinicalNotes(e.target.value)} />
+                    <div className="bg-black/20 p-3 border-t border-white/5 flex flex-col gap-3 shrink-0">
+                      {/* Verification Checkbox — Lockout Mechanism */}
+                      <label className="flex items-center gap-3 cursor-pointer select-none group">
+                        <Checkbox
+                          checked={isDataVerified}
+                          onCheckedChange={(checked) => setIsDataVerified(checked)}
+                        />
+                        <span className={`text-sm transition-colors ${
+                          isDataVerified ? "text-emerald-400 font-medium" : "text-neutral-400 group-hover:text-neutral-300"
+                        }`}>
+                          I have verified this extracted data against the original EOB.
+                        </span>
+                      </label>
+                      <div className="flex items-center justify-end">
+                        <Button type="button" onClick={handleGenerate} disabled={isGenerating || !clinicalNotes.trim() || !isDataVerified} className="bg-indigo-600 hover:bg-indigo-500 text-white hover:shadow-[0_0_20px_rgba(79,70,229,0.5)] transition-all duration-300 ease-in-out rounded-lg h-10 px-8 font-medium text-sm border border-indigo-500/50 disabled:opacity-40">
+                          {isGenerating ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>Analyzing...</span> : "Generate Appeal"}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>

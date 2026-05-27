@@ -36,6 +36,7 @@ interface ExtractionState {
   // ── Pipeline status ──
   isExtracting: boolean;
   extractionProgress: string;
+  extractionPhase: string;
   progressPercent: number;
   progressPagesProcessed: number;
   progressTotalPages: number;
@@ -83,11 +84,11 @@ function saveRows(rows: DenialRow[]) {
   } catch { /* quota exceeded — ignore */ }
 }
 
-/** Send a chunk (images or text) to the API and return claims */
+/** Send a chunk (images or text) to the API and return claims + validation metadata */
 async function sendChunkToAPI(
   payload: { images?: string[]; text?: string },
   chunkLabel: string
-): Promise<DenialRow[]> {
+): Promise<{ rows: DenialRow[]; validationAttempts: number }> {
   console.log(`[CHUNK] Sending ${chunkLabel}...`);
   const res = await fetch("/api/extract", {
     method: "POST",
@@ -116,8 +117,13 @@ async function sendChunkToAPI(
     console.warn(`[CHUNK] ${chunkLabel} warnings:`, data.warnings);
   }
 
-  if (!data.claims || data.claims.length === 0) return [];
-  return data.claims.map((c: any, i: number) => claimToRow(c, i));
+  const validationAttempts = data.validationAttempts || 1;
+
+  if (!data.claims || data.claims.length === 0) return { rows: [], validationAttempts };
+  return {
+    rows: data.claims.map((c: any, i: number) => claimToRow(c, i)),
+    validationAttempts,
+  };
 }
 
 export const useExtractionStore = create<ExtractionState>((set, get) => ({
@@ -127,6 +133,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
   queuedFiles: [],
   isExtracting: false,
   extractionProgress: "",
+  extractionPhase: "",
   progressPercent: 0,
   progressPagesProcessed: 0,
   progressTotalPages: 0,
@@ -202,6 +209,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
     set({
       isExtracting: true,
       extractionProgress: "Loading PDF engine...",
+      extractionPhase: "Preparing...",
       progressPercent: 0,
       progressPagesProcessed: 0,
       progressTotalPages: 0,
@@ -372,9 +380,16 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
             if (text.length > 50) {
               set({
                 extractionProgress: `AI analyzing text from pages ${chunkStart}–${chunkEnd}...`,
+                extractionPhase: "Extracting data...",
               });
               try {
-                newRows = await sendChunkToAPI({ text }, `TEXT ${chunkLabel}`);
+                const result = await sendChunkToAPI({ text }, `TEXT ${chunkLabel}`);
+                newRows = result.rows;
+                if (result.validationAttempts > 1) {
+                  set({ extractionPhase: `Verified on attempt ${result.validationAttempts} of 3` });
+                } else {
+                  set({ extractionPhase: "Data verified ✓" });
+                }
               } catch (err: any) {
                 if ((err as any).code === "PAYMENT_REQUIRED") throw err;
                 console.warn(`[PIPELINE] Text failed for ${chunkLabel}: ${err.message}`);
@@ -384,9 +399,19 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
           } else {
             set({
               extractionProgress: `AI analyzing pages ${chunkStart}–${chunkEnd}...`,
+              extractionPhase: "Extracting data...",
             });
             try {
-              newRows = await sendChunkToAPI({ images }, `VISION ${chunkLabel}`);
+              // Phase transitions happen during the fetch — the API may retry internally
+              set({ extractionPhase: "Extracting data..." });
+              const result = await sendChunkToAPI({ images }, `VISION ${chunkLabel}`);
+              newRows = result.rows;
+
+              if (result.validationAttempts > 1) {
+                set({ extractionPhase: `Verified on attempt ${result.validationAttempts} of 3` });
+              } else {
+                set({ extractionPhase: "Data verified ✓" });
+              }
 
               if (newRows.length === 0) {
                 console.log(
@@ -394,10 +419,17 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
                 );
                 set({
                   extractionProgress: `Retrying pages ${chunkStart}–${chunkEnd} with text...`,
+                  extractionPhase: "Retrying with text mode...",
                 });
                 const text = await extractTextRange(pdf, chunkStart, chunkEnd, file.name);
                 if (text.length > 50) {
-                  newRows = await sendChunkToAPI({ text }, `TEXT-FALLBACK ${chunkLabel}`);
+                  const fallbackResult = await sendChunkToAPI({ text }, `TEXT-FALLBACK ${chunkLabel}`);
+                  newRows = fallbackResult.rows;
+                  if (fallbackResult.validationAttempts > 1) {
+                    set({ extractionPhase: `Verified on attempt ${fallbackResult.validationAttempts} of 3` });
+                  } else {
+                    set({ extractionPhase: "Data verified ✓" });
+                  }
                 }
               }
             } catch (err: any) {
@@ -452,6 +484,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
       set({
         isExtracting: false,
         extractionProgress: "",
+        extractionPhase: "",
         progressPercent: 0,
         progressPagesProcessed: 0,
         progressTotalPages: 0,
