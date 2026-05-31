@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useExtractionStore } from "@/stores/extraction-store";
@@ -8,6 +9,63 @@ export default function SidebarNav() {
   const pathname = usePathname();
   const isExtracting = useExtractionStore((s) => s.isExtracting);
   const progressPercent = useExtractionStore((s) => s.progressPercent);
+
+  // ── Prevent tab closing, reloads, or navigating away during extraction ──
+  useEffect(() => {
+    if (!isExtracting) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // standard message (modern browsers show a generic warning, but it blocks the event)
+      e.returnValue = "An extraction is currently in progress. If you leave or refresh, the extraction will be canceled.";
+      return e.returnValue;
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isExtracting]);
+
+  // ── Request Screen Wake Lock to prevent the screen/system from sleeping ──
+  useEffect(() => {
+    if (!isExtracting) return;
+
+    let wakeLock: any = null;
+
+    async function acquireWakeLock() {
+      if (typeof window !== "undefined" && "wakeLock" in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request("screen");
+          console.log("[WAKE LOCK] Acquired screen wake lock successfully.");
+        } catch (err) {
+          console.warn("[WAKE LOCK] Failed to acquire screen wake lock:", err);
+        }
+      }
+    }
+
+    acquireWakeLock();
+
+    // Re-acquire lock if tab becomes visible again (e.g. user toggles away and returns)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && !wakeLock) {
+        acquireWakeLock();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (wakeLock) {
+        wakeLock.release().then(() => {
+          console.log("[WAKE LOCK] Released screen wake lock.");
+        }).catch((err: any) => {
+          console.error("[WAKE LOCK] Failed to release screen wake lock:", err);
+        });
+      }
+    };
+  }, [isExtracting]);
 
   const navItems = [
     { name: "New Upload", href: "/dashboard" },
@@ -33,7 +91,7 @@ export default function SidebarNav() {
               isActive
                 ? "bg-white/10 backdrop-blur-sm text-white border border-white/10"
                 : "text-neutral-400 hover:bg-white/5 hover:text-white"
-            }`}
+              }`}
           >
             {item.name}
           </Link>
@@ -59,3 +117,4 @@ export default function SidebarNav() {
     </nav>
   );
 }
+

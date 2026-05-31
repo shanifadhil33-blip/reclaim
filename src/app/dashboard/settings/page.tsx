@@ -46,16 +46,22 @@ export default function SettingsPage() {
     }
     if (!userId) return;
 
-    const { error } = await supabase.from("feedback").insert({
-      user_id: userId,
-      message: feedbackText
-    });
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, message: feedbackText }),
+      });
+      const data = await res.json();
 
-    if (error) {
-      setFeedbackStatus({ type: "error", text: error.message });
-    } else {
-      setFeedbackStatus({ type: "success", text: "Thanks! Your feedback has been sent directly to the development team." });
-      setFeedbackText("");
+      if (!res.ok || data.error) {
+        setFeedbackStatus({ type: "error", text: data.error || "Failed to send feedback." });
+      } else {
+        setFeedbackStatus({ type: "success", text: "Thanks! Your feedback has been sent directly to the development team." });
+        setFeedbackText("");
+      }
+    } catch {
+      setFeedbackStatus({ type: "error", text: "Network error. Please try again." });
     }
   };
 

@@ -206,6 +206,10 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
       return;
     }
 
+    toast.warning("Extraction started! Please keep this tab active and visible to prevent the browser from throttling execution.", {
+      duration: 6000,
+    });
+
     set({
       isExtracting: true,
       extractionProgress: "Loading PDF engine...",
