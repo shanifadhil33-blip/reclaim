@@ -552,11 +552,8 @@ export default function ReclaimDashboard() {
             <div className="space-y-6 my-4">
               {/* Editable Claim Fields — Human-in-the-Loop Verification */}
               <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 flex flex-col gap-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636-2.87L13.637 3.59a1.914 1.914 0 0 0-3.274 0z"/><path d="M12 17h.01"/></svg>
-                  <span className="text-xs text-amber-400 font-semibold uppercase tracking-wider">Verify & Correct Extracted Data</span>
-                </div>
-                <p className="text-xs text-neutral-500 leading-relaxed -mt-2">These fields were extracted by AI. Compare them against your original EOB and correct any errors before generating the appeal.</p>
+                <span className="text-xs text-neutral-400 font-semibold uppercase tracking-wider">Extracted Claim Data</span>
+                <p className="text-xs text-neutral-500 leading-relaxed">Review and correct any fields if needed before generating the appeal.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs text-neutral-400 font-medium">Patient Account</Label>
