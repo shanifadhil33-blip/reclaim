@@ -100,142 +100,117 @@ export function SubscriptionManagement({
   return (
     <>
       {/* Subscription Details Card */}
-      <div className="md:col-span-2 shadow-2xl border border-white/10 bg-white/5 backdrop-blur-xl text-white rounded-xl p-8 relative overflow-hidden">
+      <div className="shadow-2xl border border-white/10 bg-white/5 backdrop-blur-xl text-white rounded-xl p-8 relative overflow-hidden flex flex-col justify-between">
         <div className="absolute top-0 left-0 w-64 h-64 bg-emerald-500/8 blur-[100px]" />
 
-        <div className="flex items-center gap-3 mb-6">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-neutral-400"
-          >
-            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-          <h2 className="text-lg font-semibold text-white">
-            Subscription Management
-          </h2>
-        </div>
-
-        {/* Status Banner */}
-        {localCancelAtPeriodEnd && (
-          <div className="mb-6 flex items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+        <div>
+          <div className="flex items-center gap-3 mb-6">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
+              width="24"
+              height="24"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="text-amber-400 shrink-0"
+              className="text-neutral-400"
             >
-              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-              <path d="M12 9v4" />
-              <path d="M12 17h.01" />
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
             </svg>
-            <div>
-              <p className="text-amber-300 text-sm font-medium">
-                Cancellation Scheduled
-              </p>
-              <p className="text-amber-400/70 text-xs">
-                Your subscription will end on {renewalDate}. You'll keep full
-                access until then.
-              </p>
-            </div>
+            <h2 className="text-lg font-semibold text-white">
+              Subscription Management
+            </h2>
           </div>
-        )}
 
-        {!localCancelAtPeriodEnd && (subscription.status === 'incomplete' || subscription.status === 'past_due' || subscription.status === 'unpaid') && (
-          <div className="mb-6 flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-red-400 shrink-0"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" x2="12" y1="8" y2="12" />
-              <line x1="12" x2="12" y1="16" y2="16" />
-            </svg>
-            <div>
-              <p className="text-red-300 text-sm font-medium">
-                Payment Action Required / Setup Pending
-              </p>
-              <p className="text-red-400/70 text-xs">
-                Polar was unable to process the payment. Click "Manage Payment Methods" to add a valid card, or click "Cancel Subscription" to stop future charge retries.
-              </p>
+          {/* Status Banner */}
+          {localCancelAtPeriodEnd && (
+            <div className="mb-6 flex items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-amber-400 shrink-0"
+              >
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                <path d="M12 9v4" />
+                <path d="M12 17h.01" />
+              </svg>
+              <div>
+                <p className="text-amber-300 text-sm font-medium">
+                  Cancellation Scheduled
+                </p>
+                <p className="text-amber-400/70 text-xs">
+                  Your subscription will end on {renewalDate}. You'll keep full
+                  access until then.
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Details Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-5 mb-8">
-          <div className="space-y-1">
-            <p className="text-xs text-neutral-500 font-medium uppercase tracking-wider">
-              Plan
-            </p>
-            <p className="text-white font-semibold">
-              {subscription.productName || "Pro"}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-neutral-500 font-medium uppercase tracking-wider">
-              Status
-            </p>
-            <p className={`font-semibold capitalize ${
-              subscription.status === 'active' || subscription.status === 'trialing'
-                ? 'text-emerald-400'
-                : 'text-red-400 animate-pulse'
-            }`}>
-              {subscription.status === 'incomplete' ? 'Pending Payment' : subscription.status}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-neutral-500 font-medium uppercase tracking-wider">
-              Amount
-            </p>
-            <p className="text-white font-semibold">
-              {formattedAmount}
-              <span className="text-neutral-400 text-sm font-normal">
-                /{interval}
-              </span>
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-neutral-500 font-medium uppercase tracking-wider">
-              Billing Period
-            </p>
-            <p className="text-white font-semibold text-sm">
-              {periodStart && periodEnd
-                ? `${periodStart} — ${periodEnd}`
-                : "N/A"}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-neutral-500 font-medium uppercase tracking-wider">
-              {localCancelAtPeriodEnd ? "Ends On" : "Renews On"}
-            </p>
-            <p
-              className={`font-semibold ${localCancelAtPeriodEnd ? "text-amber-400" : "text-white"}`}
-            >
-              {renewalDate}
-            </p>
+          {!localCancelAtPeriodEnd && (subscription.status === 'incomplete' || subscription.status === 'past_due' || subscription.status === 'unpaid') && (
+            <div className="mb-6 flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-red-400 shrink-0"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" x2="12" y1="8" y2="12" />
+                <line x1="12" x2="12" y1="16" y2="16" />
+              </svg>
+              <div>
+                <p className="text-red-300 text-sm font-medium">
+                  Payment Action Required / Setup Pending
+                </p>
+                <p className="text-red-400/70 text-xs">
+                  Polar was unable to process the payment. Click "Manage Payment Methods" to add a valid card, or click "Cancel Subscription" to stop future charge retries.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Details List */}
+          <div className="space-y-4 mb-8">
+            <div className="flex justify-between border-b border-white/5 pb-2 text-sm">
+              <span className="text-neutral-400">Plan</span>
+              <span className="font-semibold text-white">{subscription.productName || "Pro"}</span>
+            </div>
+            <div className="flex justify-between border-b border-white/5 pb-2 text-sm">
+              <span className="text-neutral-400">Status</span>
+              <span className={`font-semibold capitalize ${
+                subscription.status === 'active' || subscription.status === 'trialing'
+                  ? 'text-emerald-400'
+                  : 'text-red-400 animate-pulse'
+              }`}>{subscription.status === 'incomplete' ? 'Pending Payment' : subscription.status}</span>
+            </div>
+            <div className="flex justify-between border-b border-white/5 pb-2 text-sm">
+              <span className="text-neutral-400">Amount</span>
+              <span className="font-semibold text-white">{formattedAmount}/{interval}</span>
+            </div>
+            <div className="flex justify-between border-b border-white/5 pb-2 text-sm">
+              <span className="text-neutral-400">Billing Period</span>
+              <span className="font-semibold text-white">{periodStart && periodEnd ? `${periodStart} — ${periodEnd}` : "N/A"}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-neutral-400">{localCancelAtPeriodEnd ? "Ends On" : "Renews On"}</span>
+              <span className={`font-semibold ${localCancelAtPeriodEnd ? "text-amber-400" : "text-white"}`}>{renewalDate}</span>
+            </div>
           </div>
         </div>
 

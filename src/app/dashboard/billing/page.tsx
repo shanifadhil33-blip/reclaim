@@ -68,8 +68,8 @@ export default async function BillingPage() {
         } catch { /* subscription lookup failed */ }
       }
 
-      // Fallback: look up by email
-      if (user.email) {
+      // Fallback: look up by email (only if not found by ID)
+      if (!subscriptionDetails && user.email) {
         try {
           const customersResult = await polar.customers.list({ email: user.email });
           for await (const page of customersResult) {
@@ -140,7 +140,7 @@ export default async function BillingPage() {
 
 
   return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-200">
       <div className="mb-8">
         <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors mb-6 group">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform"><path d="m15 18-6-6 6-6"/></svg>
@@ -152,30 +152,35 @@ export default async function BillingPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         
-        {/* Current Status Card */}
-        <div className="shadow-2xl border border-white/10 bg-white/5 backdrop-blur-xl text-white rounded-xl p-8 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 blur-[80px]" />
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mb-4 opacity-40"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
-          
-          {isPremium ? (
-            <>
-              <h2 className="text-xl font-semibold text-emerald-400 mb-2">Pro Subscription Active</h2>
-              <p className="text-neutral-400 text-sm leading-relaxed">Your account is fully unlocked. All features are available with no limits.</p>
-            </>
-          ) : isExpired ? (
-            <>
-              <h2 className="text-xl font-semibold text-red-400 mb-2">Free Trial Expired</h2>
-              <p className="text-neutral-400 text-sm leading-relaxed">Your 14-day trial has ended. Upgrade to Pro to continue generating appeal letters.</p>
-            </>
-          ) : (
-            <>
-              <h2 className="text-xl font-semibold text-neutral-200 mb-2">Free Trial Active</h2>
-              <p className="text-neutral-400 text-sm leading-relaxed">You have <span className="text-white font-bold">{diffDays} {diffDays === 1 ? "day" : "days"}</span> remaining in your free trial. All features are unlocked.</p>
-            </>
-          )}
-        </div>
+        {/* Left Column: Subscription Management if subscribed, otherwise Trial/Status Card */}
+        {subscriptionDetails ? (
+          <SubscriptionManagement subscription={subscriptionDetails} />
+        ) : (
+          /* Current Status Card */
+          <div className="shadow-2xl border border-white/10 bg-white/5 backdrop-blur-xl text-white rounded-xl p-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 blur-[80px]" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mb-4 opacity-40"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+            
+            {isPremium ? (
+              <>
+                <h2 className="text-xl font-semibold text-emerald-400 mb-2">Pro Subscription Active</h2>
+                <p className="text-neutral-400 text-sm leading-relaxed">Your account is fully unlocked. All features are available with no limits.</p>
+              </>
+            ) : isExpired ? (
+              <>
+                <h2 className="text-xl font-semibold text-red-400 mb-2">Free Trial Expired</h2>
+                <p className="text-neutral-400 text-sm leading-relaxed">Your 14-day trial has ended. Upgrade to Pro to continue generating appeal letters.</p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-semibold text-neutral-200 mb-2">Free Trial Active</h2>
+                <p className="text-neutral-400 text-sm leading-relaxed">You have <span className="text-white font-bold">{diffDays} {diffDays === 1 ? "day" : "days"}</span> remaining in your free trial. All features are unlocked.</p>
+              </>
+            )}
+          </div>
+        )}
 
-        {/* Pro Plan Card */}
+        {/* Right Column: Pro Plan Card */}
         <div className="shadow-2xl border border-indigo-500/20 bg-indigo-500/5 backdrop-blur-xl text-white rounded-xl p-8 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/15 blur-[80px]" />
           
@@ -218,13 +223,6 @@ export default async function BillingPage() {
           
           <p className="text-xs text-neutral-500 text-center mt-4">Cancel anytime. No long-term contracts.</p>
         </div>
-
-        {/* Subscription Management — visible if any non-canceled subscription is found */}
-        {subscriptionDetails && (
-          <div className="md:col-span-2">
-            <SubscriptionManagement subscription={subscriptionDetails} />
-          </div>
-        )}
       </div>
     </div>
   );

@@ -240,7 +240,7 @@ export default function ReclaimDashboard() {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-200 pb-12">
       <div className="mb-8">
         <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-2">EOB Denial Triage</h1>
         <p className="text-neutral-400">Upload an Explanation of Benefits PDF. We extract only the denied claims.</p>
