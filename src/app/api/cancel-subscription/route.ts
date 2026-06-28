@@ -37,7 +37,45 @@ export async function POST(req: Request) {
       .eq('id', user.id)
       .single();
 
-    if (!profile?.polar_subscription_id) {
+    let subscriptionId = profile?.polar_subscription_id;
+    const polar = new Polar({ accessToken: polarToken });
+
+    // Fallback: if subscription ID is missing in DB, search Polar by email
+    if (!subscriptionId && user.email) {
+      try {
+        const customersResult = await polar.customers.list({ email: user.email });
+        for await (const page of customersResult) {
+          const customers = page.result?.items || [];
+          for (const customer of customers) {
+            const subsResult = await polar.subscriptions.list({ customerId: customer.id });
+            for await (const subPage of subsResult) {
+              const subs = subPage.result?.items || [];
+              for (const sub of subs) {
+                if (sub.status !== 'canceled' && sub.status !== 'incomplete_expired') {
+                  subscriptionId = sub.id;
+                  
+                  // Save subscription ID to Supabase to keep it in sync
+                  const adminSupabase = createAdminClient();
+                  await adminSupabase
+                    .from('profiles')
+                    .update({ polar_subscription_id: sub.id })
+                    .eq('id', user.id);
+                  
+                  break;
+                }
+              }
+              if (subscriptionId) break;
+            }
+            if (subscriptionId) break;
+          }
+          if (subscriptionId) break;
+        }
+      } catch (e) {
+        console.error('[CANCEL] Polar email fallback lookup error:', e);
+      }
+    }
+
+    if (!subscriptionId) {
       return NextResponse.json(
         { error: 'No active subscription found' },
         { status: 404 }
@@ -55,11 +93,9 @@ export async function POST(req: Request) {
       // No body — that's fine
     }
 
-    const polar = new Polar({ accessToken: polarToken });
-
     // Cancel at period end — user keeps access until their current period expires
     const updatedSub = await polar.subscriptions.update({
-      id: profile.polar_subscription_id,
+      id: subscriptionId,
       subscriptionUpdate: {
         cancelAtPeriodEnd: true,
         ...(reason && { customerCancellationReason: reason as any }),
@@ -74,7 +110,7 @@ export async function POST(req: Request) {
       .update({ subscription_status: 'active' }) // Still active until period ends
       .eq('id', user.id);
 
-    console.log(`[CANCEL] User ${user.id} scheduled cancellation for subscription ${profile.polar_subscription_id}`);
+    console.log(`[CANCEL] User ${user.id} scheduled cancellation for subscription ${subscriptionId}`);
 
     return NextResponse.json({
       success: true,
