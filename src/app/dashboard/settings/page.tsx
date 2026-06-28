@@ -17,6 +17,7 @@ export default function SettingsPage() {
 
   // Export format preference
   const [exportFormat, setExportFormat] = useState<"txt" | "docx">("txt");
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   const supabase = createClient();
 
@@ -193,14 +194,81 @@ export default function SettingsPage() {
         {/* Logout */}
         <div className="border-t border-white/10 pt-8 mt-8">
            <p className="text-sm text-neutral-400 mb-6">Terminate your active encrypted session.</p>
-           <form action="/auth/signout" method="post">
-             <Button type="submit" variant="outline" className="bg-white/5 text-white hover:bg-white/10 border border-white/10 transition-all duration-300 ease-in-out">
-                Log Out
-             </Button>
-           </form>
+           <Button 
+             type="button" 
+             onClick={() => setShowLogoutDialog(true)} 
+             variant="outline" 
+             className="bg-white/5 text-white hover:bg-white/10 border border-white/10 transition-all duration-300 ease-in-out"
+           >
+              Log Out
+           </Button>
         </div>
 
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      {showLogoutDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setShowLogoutDialog(false)}
+        >
+          <div
+            className="w-full max-w-md mx-4 bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-amber-400"
+                >
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" x2="9" y1="12" y2="12" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">
+                  Log Out?
+                </h3>
+                <p className="text-neutral-400 text-xs">
+                  Are you sure you want to end your current session?
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-neutral-300 leading-relaxed mb-6">
+              You will need to sign in again to access your Explanation of Benefits documents and appeals history.
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowLogoutDialog(false)}
+                className="h-10 px-4 text-sm font-medium rounded-lg border border-white/10 bg-white/5 text-neutral-200 hover:bg-white/10 hover:text-white transition-all"
+              >
+                Cancel
+              </button>
+              <form action="/auth/signout" method="post">
+                <button
+                  type="submit"
+                  className="h-10 px-4 text-sm font-medium rounded-lg bg-red-600 hover:bg-red-500 text-white transition-all"
+                >
+                  Log Out
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

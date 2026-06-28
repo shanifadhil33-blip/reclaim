@@ -353,14 +353,14 @@ export function SubscriptionManagement({
                   onChange={(e) => setCancelReason(e.target.value)}
                   className="mt-1.5 w-full h-9 px-3 rounded-lg bg-white/5 border border-white/10 text-neutral-200 text-sm focus:border-indigo-500 focus:outline-none transition-colors appearance-none cursor-pointer"
                 >
-                  <option value="">Select a reason...</option>
-                  <option value="too_expensive">Too expensive</option>
-                  <option value="missing_features">Missing features I need</option>
-                  <option value="switched_service">Switched to another service</option>
-                  <option value="unused">Not using it enough</option>
-                  <option value="customer_service">Customer service issues</option>
-                  <option value="too_complex">Too complex to use</option>
-                  <option value="other">Other</option>
+                  <option value="" className="bg-neutral-900 text-neutral-300">Select a reason...</option>
+                  <option value="too_expensive" className="bg-neutral-900 text-neutral-300">Too expensive</option>
+                  <option value="missing_features" className="bg-neutral-900 text-neutral-300">Missing features I need</option>
+                  <option value="switched_service" className="bg-neutral-900 text-neutral-300">Switched to another service</option>
+                  <option value="unused" className="bg-neutral-900 text-neutral-300">Not using it enough</option>
+                  <option value="customer_service" className="bg-neutral-900 text-neutral-300">Customer service issues</option>
+                  <option value="too_complex" className="bg-neutral-900 text-neutral-300">Too complex to use</option>
+                  <option value="other" className="bg-neutral-900 text-neutral-300">Other</option>
                 </select>
               </label>
               <label className="block">
