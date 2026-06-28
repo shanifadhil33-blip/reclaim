@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Polar } from "@polar-sh/sdk";
+import { SubscriptionManagement } from "./subscription-management";
 
 export default async function BillingPage() {
   const supabase = await createClient();
@@ -21,7 +22,19 @@ export default async function BillingPage() {
   // Server-side verification: if DB says not active, check Polar directly
   let verifiedStatus = profile?.subscription_status;
   
-  if (verifiedStatus !== 'active' && process.env.POLAR_API_TOKEN) {
+  // Full subscription details for the management card
+  let subscriptionDetails: {
+    status: string;
+    cancelAtPeriodEnd: boolean;
+    currentPeriodEnd: string | null;
+    currentPeriodStart: string | null;
+    amount: number | null;
+    currency: string | null;
+    recurringInterval: string | null;
+    productName: string | null;
+  } | null = null;
+  
+  if (process.env.POLAR_API_TOKEN) {
     try {
       const polar = new Polar({ accessToken: process.env.POLAR_API_TOKEN });
       
@@ -29,10 +42,28 @@ export default async function BillingPage() {
       if (profile?.polar_subscription_id) {
         try {
           const sub = await polar.subscriptions.get({ id: profile.polar_subscription_id });
-          if (sub && (sub.status === 'active' || sub.status === 'trialing')) {
-            verifiedStatus = 'active';
-            const adminSupabase = createAdminClient();
-            await adminSupabase.from('profiles').update({ subscription_status: 'active' }).eq('id', user.id);
+          if (sub) {
+            if (sub.status === 'active' || sub.status === 'trialing') {
+              verifiedStatus = 'active';
+              
+              // Sync to DB if not already active
+              if (profile?.subscription_status !== 'active') {
+                const adminSupabase = createAdminClient();
+                await adminSupabase.from('profiles').update({ subscription_status: 'active' }).eq('id', user.id);
+              }
+            }
+            
+            // Populate subscription details for the management UI
+            subscriptionDetails = {
+              status: sub.status,
+              cancelAtPeriodEnd: sub.cancelAtPeriodEnd ?? false,
+              currentPeriodEnd: sub.currentPeriodEnd ? sub.currentPeriodEnd.toISOString() : null,
+              currentPeriodStart: sub.currentPeriodStart ? sub.currentPeriodStart.toISOString() : null,
+              amount: sub.amount ?? null,
+              currency: sub.currency ?? null,
+              recurringInterval: sub.recurringInterval ?? null,
+              productName: sub.product?.name ?? null,
+            };
           }
         } catch { /* subscription lookup failed */ }
       }
@@ -55,6 +86,18 @@ export default async function BillingPage() {
                       subscription_status: 'active',
                       polar_subscription_id: sub.id 
                     }).eq('id', user.id);
+                    
+                    // Populate subscription details
+                    subscriptionDetails = {
+                      status: sub.status,
+                      cancelAtPeriodEnd: sub.cancelAtPeriodEnd ?? false,
+                      currentPeriodEnd: sub.currentPeriodEnd ? sub.currentPeriodEnd.toISOString() : null,
+                      currentPeriodStart: sub.currentPeriodStart ? sub.currentPeriodStart.toISOString() : null,
+                      amount: sub.amount ?? null,
+                      currency: sub.currency ?? null,
+                      recurringInterval: sub.recurringInterval ?? null,
+                      productName: sub.product?.name ?? null,
+                    };
                     break;
                   }
                 }
@@ -160,12 +203,17 @@ export default async function BillingPage() {
 
           {isPremium && (
             <div className="text-center py-3 px-4 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium text-sm">
-              ✓ You're on the Pro Plan
+              ✓ You&apos;re on the Pro Plan
             </div>
           )}
           
           <p className="text-xs text-neutral-500 text-center mt-4">Cancel anytime. No long-term contracts.</p>
         </div>
+
+        {/* Subscription Management — only visible to Pro users */}
+        {isPremium && subscriptionDetails && (
+          <SubscriptionManagement subscription={subscriptionDetails} />
+        )}
       </div>
     </div>
   );
