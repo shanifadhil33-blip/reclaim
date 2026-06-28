@@ -4,8 +4,6 @@ import { Resend } from 'resend';
 
 export const dynamic = 'force-dynamic';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function POST(request: Request) {
   try {
     const { userId, message } = await request.json();
@@ -49,6 +47,7 @@ export async function POST(request: Request) {
 
     if (process.env.RESEND_API_KEY && notifyEmail) {
       try {
+        const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({
           from: 'Reclaim Feedback <onboarding@resend.dev>',
           to: notifyEmail,
