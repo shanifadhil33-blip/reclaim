@@ -69,25 +69,36 @@ export default async function BillingPage() {
       }
 
       // Fallback: look up by email
-      if (verifiedStatus !== 'active' && user.email) {
+      if (user.email) {
         try {
           const customersResult = await polar.customers.list({ email: user.email });
           for await (const page of customersResult) {
             const customers = page.result?.items || [];
             for (const customer of customers) {
-              const subsResult = await polar.subscriptions.list({ customerId: customer.id, active: true });
+              // Fetch all subscriptions (including incomplete, past_due, unpaid)
+              const subsResult = await polar.subscriptions.list({ customerId: customer.id });
               for await (const subPage of subsResult) {
                 const subs = subPage.result?.items || [];
                 for (const sub of subs) {
-                  if (sub.status === 'active' || sub.status === 'trialing') {
+                  // Skip canceled or expired subscriptions
+                  if (sub.status === 'canceled' || sub.status === 'incomplete_expired') {
+                    continue;
+                  }
+
+                  const isActive = sub.status === 'active' || sub.status === 'trialing';
+                  
+                  if (isActive && verifiedStatus !== 'active') {
                     verifiedStatus = 'active';
                     const adminSupabase = createAdminClient();
                     await adminSupabase.from('profiles').update({ 
                       subscription_status: 'active',
                       polar_subscription_id: sub.id 
                     }).eq('id', user.id);
-                    
-                    // Populate subscription details
+                  }
+                  
+                  // Populate subscription details so the user can cancel/manage it (even if incomplete or past_due)
+                  // Prioritize active/trialing ones if there are multiple, or if none is set yet
+                  if (!subscriptionDetails || isActive) {
                     subscriptionDetails = {
                       status: sub.status,
                       cancelAtPeriodEnd: sub.cancelAtPeriodEnd ?? false,
@@ -98,16 +109,14 @@ export default async function BillingPage() {
                       recurringInterval: sub.recurringInterval ?? null,
                       productName: sub.product?.name ?? null,
                     };
-                    break;
                   }
                 }
-                if (verifiedStatus === 'active') break;
               }
-              if (verifiedStatus === 'active') break;
             }
-            if (verifiedStatus === 'active') break;
           }
-        } catch { /* email lookup failed */ }
+        } catch (e) {
+          console.error('[BILLING] Email lookup fallback error:', e);
+        }
       }
     } catch (e) {
       console.error('[BILLING] Polar verification failed:', e);
@@ -210,9 +219,11 @@ export default async function BillingPage() {
           <p className="text-xs text-neutral-500 text-center mt-4">Cancel anytime. No long-term contracts.</p>
         </div>
 
-        {/* Subscription Management — only visible to Pro users */}
-        {isPremium && subscriptionDetails && (
-          <SubscriptionManagement subscription={subscriptionDetails} />
+        {/* Subscription Management — visible if any non-canceled subscription is found */}
+        {subscriptionDetails && (
+          <div className="md:col-span-2">
+            <SubscriptionManagement subscription={subscriptionDetails} />
+          </div>
         )}
       </div>
     </div>

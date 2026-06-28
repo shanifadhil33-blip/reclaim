@@ -155,14 +155,55 @@ export function SubscriptionManagement({
           </div>
         )}
 
+        {!localCancelAtPeriodEnd && (subscription.status === 'incomplete' || subscription.status === 'past_due' || subscription.status === 'unpaid') && (
+          <div className="mb-6 flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-red-400 shrink-0"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" x2="12" y1="8" y2="12" />
+              <line x1="12" x2="12" y1="16" y2="16" />
+            </svg>
+            <div>
+              <p className="text-red-300 text-sm font-medium">
+                Payment Action Required / Setup Pending
+              </p>
+              <p className="text-red-400/70 text-xs">
+                Polar was unable to process the payment. Click "Manage Payment Methods" to add a valid card, or click "Cancel Subscription" to stop future charge retries.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Details Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-5 mb-8">
           <div className="space-y-1">
             <p className="text-xs text-neutral-500 font-medium uppercase tracking-wider">
               Plan
             </p>
             <p className="text-white font-semibold">
               {subscription.productName || "Pro"}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-neutral-500 font-medium uppercase tracking-wider">
+              Status
+            </p>
+            <p className={`font-semibold capitalize ${
+              subscription.status === 'active' || subscription.status === 'trialing'
+                ? 'text-emerald-400'
+                : 'text-red-400 animate-pulse'
+            }`}>
+              {subscription.status === 'incomplete' ? 'Pending Payment' : subscription.status}
             </p>
           </div>
           <div className="space-y-1">
