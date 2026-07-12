@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
+import * as Sentry from '@sentry/nextjs'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,10 +13,9 @@ export async function GET(request: Request) {
   const providerError = searchParams.get('error')
   const providerErrorDescription = searchParams.get('error_description')
   if (providerError || providerErrorDescription) {
-    console.error('OAuth Callback Redirect Error:', {
-      error: providerError,
-      description: providerErrorDescription
-    })
+    const errMsg = `OAuth Callback Redirect Error: ${providerError} - ${providerErrorDescription}`
+    console.error(errMsg)
+    Sentry.captureMessage(errMsg, 'error')
   }
 
   if (code) {
@@ -88,9 +88,11 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/dashboard`)
     } else {
       console.error('OAuth Code Exchange Error:', error)
+      Sentry.captureException(error)
     }
   }
 
   return NextResponse.redirect(`${origin}/login?error=Invalid+Auth+Code`)
 }
+
 
