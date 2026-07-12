@@ -2,10 +2,22 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   
+  // Log any redirect errors from the provider
+  const providerError = searchParams.get('error')
+  const providerErrorDescription = searchParams.get('error_description')
+  if (providerError || providerErrorDescription) {
+    console.error('OAuth Callback Redirect Error:', {
+      error: providerError,
+      description: providerErrorDescription
+    })
+  }
+
   if (code) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
@@ -74,8 +86,11 @@ export async function GET(request: Request) {
       }
 
       return NextResponse.redirect(`${origin}/dashboard`)
+    } else {
+      console.error('OAuth Code Exchange Error:', error)
     }
   }
 
   return NextResponse.redirect(`${origin}/login?error=Invalid+Auth+Code`)
 }
+
