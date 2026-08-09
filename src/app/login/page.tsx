@@ -1,58 +1,89 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import FingerprintJS from "@fingerprintjs/fingerprintjs";
 
 function AuthContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fingerprintReady, setFingerprintReady] = useState(false);
 
-  // Check for device limit error from callback
   useEffect(() => {
     const errorParam = searchParams.get("error");
     if (errorParam === "device_limit") {
-      setError("Another account is already registered on this device. Please upgrade to Pro or use your original account.");
+      setError(
+        "Another account is already registered on this device. Please upgrade to Pro or use your original account."
+      );
     } else if (errorParam) {
       setError(errorParam.replace(/\+/g, " "));
     }
   }, [searchParams]);
 
-  // Generate and store device fingerprint on page load
   useEffect(() => {
+    let cancelled = false;
+
     async function generateFingerprint() {
       try {
         const fp = await FingerprintJS.load();
         const result = await fp.get();
-        // Store fingerprint in a cookie so the server callback can read it
-        document.cookie = `device_fp=${result.visitorId}; path=/; max-age=300; SameSite=Lax`;
+        if (cancelled) return;
+        const secure = window.location.protocol === "https:" ? "; Secure" : "";
+        document.cookie = `device_fp=${result.visitorId}; path=/; max-age=300; SameSite=Lax${secure}`;
+        setFingerprintReady(true);
       } catch (err) {
         console.error("Fingerprint generation failed:", err);
+        // Allow sign-in even if fingerprinting fails; callback skips device checks.
+        if (!cancelled) setFingerprintReady(true);
       }
     }
+
     generateFingerprint();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
       setError(null);
-      const { error } = await supabase.auth.signInWithOAuth({
+
+      // Clear any existing Supabase session so account switching cannot reuse
+      // the previous user's cookies during PKCE exchange / dashboard load.
+      await supabase.auth.signOut({ scope: "local" });
+
+      const next = searchParams.get("next");
+      const redirectTo = new URL("/auth/callback", window.location.origin);
+      if (next?.startsWith("/")) {
+        redirectTo.searchParams.set("next", next);
+      }
+
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: redirectTo.toString(),
+          queryParams: {
+            // Force Google account chooser so users aren't silently stuck on
+            // the last Google account that had an active browser session.
+            prompt: "select_account",
+          },
         },
       });
-      if (error) throw error;
-    } catch (err: any) {
-      setError(err.message || "Failed to sign in with Google.");
+
+      if (oauthError) throw oauthError;
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to sign in with Google.";
+      setError(message);
       setLoading(false);
     }
   };
+
+  const isBusy = loading || !fingerprintReady;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-950 p-4 font-sans relative overflow-hidden">
@@ -83,16 +114,16 @@ function AuthContent() {
           {/* Google Button */}
           <button
             onClick={handleGoogleSignIn}
-            disabled={loading}
+            disabled={isBusy}
             className="w-full h-14 bg-white hover:bg-neutral-100 text-neutral-900 font-semibold text-[15px] rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_30px_rgba(255,255,255,0.08)] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? (
+            {isBusy ? (
               <div className="flex items-center gap-3">
                 <svg className="animate-spin h-5 w-5 text-neutral-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Connecting...
+                {loading ? "Connecting..." : "Preparing..."}
               </div>
             ) : (
               <>

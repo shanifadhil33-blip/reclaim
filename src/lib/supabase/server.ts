@@ -12,15 +12,14 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll()
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet, _headers) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
+            cookiesToSet.forEach(({ name, value, options }: { name: string; value: string; options: CookieOptions }) =>
               cookieStore.set(name, value, options)
             )
           } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
+            // Called from a Server Component where cookies cannot be set.
+            // The Proxy (src/proxy.ts) refreshes and writes auth cookies.
           }
         },
       },
