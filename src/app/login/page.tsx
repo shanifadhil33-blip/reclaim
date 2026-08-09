@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import FingerprintJS from "@fingerprintjs/fingerprintjs";
@@ -137,6 +138,19 @@ function AuthContent() {
               </>
             )}
           </button>
+
+          <div className="relative flex items-center gap-3">
+            <div className="h-px flex-1 bg-white/10" />
+            <span className="text-[11px] uppercase tracking-wider text-neutral-600">or</span>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
+
+          <Link
+            href="/demo"
+            className="w-full h-14 bg-transparent hover:bg-white/5 text-white font-semibold text-[15px] rounded-xl transition-all duration-200 border border-white/15 hover:border-white/25 flex items-center justify-center gap-2"
+          >
+            Try Live Demo
+          </Link>
 
           {/* Subtle info */}
           <p className="text-[11px] text-neutral-500 text-center leading-relaxed">

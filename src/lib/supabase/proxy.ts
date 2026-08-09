@@ -42,7 +42,18 @@ export async function updateSession(request: NextRequest) {
   const user = data?.claims
 
   const pathname = request.nextUrl.pathname
-  const isProtected = pathname.startsWith('/dashboard')
+  // Public marketing/auth surfaces — never gate these behind login.
+  // /demo is intentionally open so prospects can try the UI without an account.
+  const isPublicRoute =
+    pathname === '/' ||
+    pathname.startsWith('/demo') ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/auth') ||
+    pathname.startsWith('/hipaa') ||
+    pathname.startsWith('/privacy') ||
+    pathname.startsWith('/contact')
+
+  const isProtected = pathname.startsWith('/dashboard') && !isPublicRoute
   const isLogin = pathname.startsWith('/login')
 
   if (!user && isProtected) {

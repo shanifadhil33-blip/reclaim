@@ -35,6 +35,9 @@ export default function LandingPage() {
             <Link href="/login?mode=signup" className="inline-flex items-center justify-center font-medium h-14 px-8 text-lg bg-neutral-100 text-neutral-950 hover:bg-white transition-all duration-300 ease-in-out hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] rounded-full">
               Sign Up Free
             </Link>
+            <Link href="/demo" className="inline-flex items-center justify-center font-medium h-14 px-8 text-lg bg-transparent text-white border border-white/20 hover:bg-white/10 hover:border-white/30 transition-all duration-300 ease-in-out rounded-full">
+              Try Live Demo
+            </Link>
           </div>
         </div>
       </main>
