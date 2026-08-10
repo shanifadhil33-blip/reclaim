@@ -120,7 +120,7 @@ export default function EditableLetter({
           Editing Mode Active
         </span>
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => { setIsEditing(false); setLetterContent(initialLetter || ""); }} className="text-neutral-400 hover:text-white hover:bg-white/5">
+          <Button variant="ghost" size="sm" onClick={() => { setIsEditing(false); setLetterContent(initialLetter || ""); }} className="text-muted-foreground hover:text-foreground hover:bg-accent">
             Cancel
           </Button>
           <Button size="sm" onClick={handleSave} disabled={isSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_0_15px_rgba(79,70,229,0.3)]">

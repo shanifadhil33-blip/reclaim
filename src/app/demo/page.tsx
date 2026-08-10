@@ -112,7 +112,7 @@ export default function LiveDemoPage() {
               className={buttonVariants({
                 size: "sm",
                 className:
-                  "h-8 rounded-full bg-neutral-100 text-neutral-950 hover:bg-white text-xs font-semibold px-4",
+                  "h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground text-xs font-semibold px-4",
               })}
             >
               Sign up free
@@ -342,14 +342,14 @@ export default function LiveDemoPage() {
                       <Button
                         type="button"
                         onClick={copyLetter}
-                        className="bg-white/10 text-white hover:bg-white/20 border border-white/10 w-full"
+                        className="bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground border border-border w-full"
                       >
                         Copy Text
                       </Button>
                       <Button
                         type="button"
                         onClick={downloadLetter}
-                        className="bg-white/10 text-white hover:bg-white/20 border border-white/10 w-full"
+                        className="bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground border border-border w-full"
                       >
                         Download (.txt)
                       </Button>
@@ -366,7 +366,7 @@ export default function LiveDemoPage() {
                   variant="outline"
                   onClick={handlePrev}
                   disabled={!hasPrev}
-                  className="bg-transparent border-white/10 text-neutral-400 hover:text-white hover:bg-white/5 disabled:opacity-30 flex-1 sm:flex-none"
+                  className="bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-35 disabled:text-muted-foreground/70 flex-1 sm:flex-none"
                 >
                   Previous
                 </Button>
@@ -375,7 +375,7 @@ export default function LiveDemoPage() {
                   variant="outline"
                   onClick={handleNext}
                   disabled={!hasNext}
-                  className="bg-transparent border-white/10 text-neutral-400 hover:text-white hover:bg-white/5 disabled:opacity-30 flex-1 sm:flex-none"
+                  className="bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-35 disabled:text-muted-foreground/70 flex-1 sm:flex-none"
                 >
                   Next
                 </Button>
@@ -384,7 +384,7 @@ export default function LiveDemoPage() {
                 <Link href="/login?mode=signup" className="w-full sm:w-auto">
                   <Button
                     type="button"
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white w-full sm:w-auto"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground w-full sm:w-auto"
                   >
                     Sign up to use real EOBs
                   </Button>
@@ -393,7 +393,7 @@ export default function LiveDemoPage() {
                   type="button"
                   variant="outline"
                   onClick={closeModal}
-                  className="bg-transparent border-white/10 text-neutral-400 hover:text-white hover:bg-white/5 w-full sm:w-auto"
+                  className="bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-accent w-full sm:w-auto"
                 >
                   Close
                 </Button>

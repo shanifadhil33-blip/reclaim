@@ -25,8 +25,8 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col bg-neutral-950 text-neutral-50">
+    <html lang="en" className="dark h-full antialiased">
+      <body className="min-h-full flex flex-col bg-background text-foreground">
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="text-center max-w-md">
             <div className="bg-red-500/10 border border-red-500/20 rounded-full p-4 mb-6 inline-flex">

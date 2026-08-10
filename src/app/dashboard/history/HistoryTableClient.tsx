@@ -169,7 +169,7 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
               variant="outline"
               size="sm"
               onClick={() => setIsSelectionMode(true)}
-              className="bg-transparent border-white/20 text-neutral-300 hover:bg-white/10 hover:text-white transition-colors h-10"
+              className="bg-transparent border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-colors h-10"
             >
               Manage
             </Button>

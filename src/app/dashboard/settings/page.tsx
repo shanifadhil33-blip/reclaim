@@ -172,7 +172,7 @@ export default function SettingsPage() {
              </div>
            </div>
            
-           <Button onClick={handleSubmitFeedback} className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_0_15px_rgba(79,70,229,0.3)] transition-all">
+           <Button onClick={handleSubmitFeedback} className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground transition-all">
              Send Feedback
            </Button>
         </div>
@@ -198,7 +198,7 @@ export default function SettingsPage() {
              type="button" 
              onClick={() => setShowLogoutDialog(true)} 
              variant="outline" 
-             className="bg-white/5 text-white hover:bg-white/10 border border-white/10 transition-all duration-300 ease-in-out"
+             className="bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground border border-border transition-all duration-300 ease-in-out"
            >
               Log Out
            </Button>

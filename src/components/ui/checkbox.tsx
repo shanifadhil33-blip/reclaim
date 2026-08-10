@@ -21,13 +21,13 @@ function Checkbox({
       checked={checked}
       onCheckedChange={(val) => onCheckedChange?.(val)}
       className={cn(
-        "peer h-[18px] w-[18px] shrink-0 rounded-[4px] border border-white/20 bg-white/5 ring-offset-background transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[checked]:bg-indigo-600 data-[checked]:border-indigo-500",
+        "peer h-[18px] w-[18px] shrink-0 rounded-[4px] border border-border bg-input/30 text-primary-foreground ring-offset-background transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-45 disabled:border-border/50 data-[checked]:bg-primary data-[checked]:border-primary",
         className
       )}
       {...props}
     >
       <CheckboxPrimitive.Indicator
-        className="flex items-center justify-center text-white"
+        className="flex items-center justify-center text-primary-foreground"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

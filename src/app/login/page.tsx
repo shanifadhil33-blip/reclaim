@@ -116,7 +116,7 @@ function AuthContent() {
           <button
             onClick={handleGoogleSignIn}
             disabled={isBusy}
-            className="w-full h-14 bg-white hover:bg-neutral-100 text-neutral-900 font-semibold text-[15px] rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_30px_rgba(255,255,255,0.08)] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-14 bg-white hover:bg-neutral-100 text-neutral-900 font-semibold text-[15px] rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_30px_rgba(255,255,255,0.08)] flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:bg-neutral-300 disabled:text-neutral-600 disabled:shadow-none"
           >
             {isBusy ? (
               <div className="flex items-center gap-3">
@@ -147,7 +147,7 @@ function AuthContent() {
 
           <Link
             href="/demo"
-            className="w-full h-14 bg-transparent hover:bg-white/5 text-white font-semibold text-[15px] rounded-xl transition-all duration-200 border border-white/15 hover:border-white/25 flex items-center justify-center gap-2"
+            className="w-full h-14 bg-transparent hover:bg-accent text-foreground font-semibold text-[15px] rounded-xl transition-all duration-200 border border-border hover:border-border flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             Try Live Demo
           </Link>

@@ -429,7 +429,7 @@ export default function ReclaimDashboard() {
           </div>
           {rows.length > 0 && !isSelectionMode && (
             <Button variant="outline" size="sm" onClick={() => setIsSelectionMode(true)}
-              className="bg-transparent border-white/20 text-neutral-300 hover:bg-white/10 hover:text-white transition-colors">
+              className="border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
               Manage
             </Button>
           )}
@@ -560,7 +560,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editPatientAccount}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditPatientAccount(e.target.value)}
-                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus:border-indigo-500"
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus-visible:border-ring"
                     />
                   </div>
                   <div className="space-y-1">
@@ -568,7 +568,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editPatientName}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditPatientName(e.target.value)}
-                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus:border-indigo-500"
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus-visible:border-ring"
                     />
                   </div>
                   <div className="space-y-1">
@@ -576,7 +576,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editDateOfService}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditDateOfService(e.target.value)}
-                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus:border-indigo-500"
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus-visible:border-ring"
                     />
                   </div>
                   <div className="space-y-1">
@@ -584,7 +584,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editBilledCPT}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditBilledCPT(e.target.value)}
-                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 font-mono focus:border-indigo-500"
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 font-mono focus-visible:border-ring"
                     />
                   </div>
                   <div className="space-y-1">
@@ -592,7 +592,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editDenialCode}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditDenialCode(e.target.value)}
-                      className="bg-white/5 border-white/10 text-red-400 text-sm h-9 font-mono focus:border-indigo-500"
+                      className="bg-white/5 border-white/10 text-red-400 text-sm h-9 font-mono focus-visible:border-ring"
                     />
                   </div>
                   <div className="space-y-1">
@@ -600,7 +600,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editPayerName}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditPayerName(e.target.value)}
-                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus:border-indigo-500"
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus-visible:border-ring"
                     />
                   </div>
                   <div className="space-y-1">
@@ -608,7 +608,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editBilledAmount}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditBilledAmount(e.target.value)}
-                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 font-mono focus:border-indigo-500"
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 font-mono focus-visible:border-ring"
                     />
                   </div>
                   <div className="space-y-1">
@@ -616,7 +616,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editPaidAmount}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditPaidAmount(e.target.value)}
-                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 font-mono focus:border-indigo-500"
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 font-mono focus-visible:border-ring"
                     />
                   </div>
                 </div>
@@ -625,7 +625,7 @@ export default function ReclaimDashboard() {
                   <Textarea
                     value={editDenialReason}
                     onChange={(e) => setEditDenialReason(e.target.value)}
-                    className="bg-white/5 border-white/10 text-neutral-300 text-sm min-h-[60px] resize-y focus:border-indigo-500"
+                    className="bg-white/5 border-white/10 text-neutral-300 text-sm min-h-[60px] resize-y focus-visible:border-ring"
                     rows={2}
                   />
                 </div>
@@ -641,7 +641,7 @@ export default function ReclaimDashboard() {
                     <p className="text-xs text-neutral-400 leading-relaxed">Copy the doctor's raw clinical notes from your EMR for this date of service.</p>
                   </div>
                   <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-xl focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all overflow-hidden flex flex-col">
-                    <Textarea id="clinicalNotes" autoFocus placeholder="Paste raw notes here (Ctrl+V)..." className="min-h-[180px] bg-transparent border-0 text-white placeholder:text-neutral-600 focus-visible:ring-0 resize-y text-base p-4 custom-scrollbar" value={clinicalNotes} onChange={(e) => setClinicalNotes(e.target.value)} />
+                    <Textarea id="clinicalNotes" autoFocus placeholder="Paste raw notes here (Ctrl+V)..." className="min-h-[180px] bg-transparent border-0 text-foreground placeholder:text-muted-foreground focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-ring/40 resize-y text-base p-4 custom-scrollbar" value={clinicalNotes} onChange={(e) => setClinicalNotes(e.target.value)} />
                     <div className="bg-black/20 p-3 border-t border-white/5 flex flex-col gap-3 shrink-0">
                       {/* Verification Checkbox — Lockout Mechanism */}
                       <label className="flex items-center gap-3 cursor-pointer select-none group">
@@ -656,8 +656,8 @@ export default function ReclaimDashboard() {
                         </span>
                       </label>
                       <div className="flex items-center justify-end">
-                        <Button type="button" onClick={handleGenerate} disabled={isGenerating || !clinicalNotes.trim() || !isDataVerified} className="bg-indigo-600 hover:bg-indigo-500 text-white hover:shadow-[0_0_20px_rgba(79,70,229,0.5)] transition-all duration-300 ease-in-out rounded-lg h-10 px-8 font-medium text-sm border border-indigo-500/50 disabled:opacity-40">
-                          {isGenerating ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>Analyzing...</span> : "Generate Appeal"}
+                        <Button type="button" onClick={handleGenerate} disabled={isGenerating || !clinicalNotes.trim() || !isDataVerified} className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground transition-all duration-300 ease-in-out rounded-lg h-10 px-8 font-medium text-sm border border-primary/50 disabled:opacity-40 disabled:bg-muted disabled:text-muted-foreground disabled:border-border">
+                          {isGenerating ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></div>Analyzing...</span> : "Generate Appeal"}
                         </Button>
                       </div>
                     </div>
@@ -678,14 +678,14 @@ export default function ReclaimDashboard() {
                   <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-4 max-h-[300px] overflow-y-auto text-sm text-neutral-300 whitespace-pre-wrap custom-scrollbar">{selectedRow.generatedLetter}</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                     <div className="flex flex-col gap-2 p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm">
-                      <Button type="button" onClick={() => { navigator.clipboard.writeText(selectedRow.generatedLetter || ""); toast.success("Copied!"); }} className="bg-white/10 text-white hover:bg-white/20 border border-white/10 transition-all w-full">Copy Text</Button>
+                      <Button type="button" onClick={() => { navigator.clipboard.writeText(selectedRow.generatedLetter || ""); toast.success("Copied!"); }} className="bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground border border-border transition-all w-full">Copy Text</Button>
                       <p className="text-xs text-neutral-500 text-center">For pasting into payer portals or EMR.</p>
                     </div>
                     <div className="flex flex-col gap-2 p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm">
                       <Button type="button" onClick={() => {
                         const el = document.createElement("a"); const blob = new Blob([selectedRow.generatedLetter || ""], { type: "text/plain" }); el.href = URL.createObjectURL(blob);
                         el.download = `Appeal_${selectedRow.payerName}_${selectedRow.dateOfService.replace(/\//g, "-")}.txt`; document.body.appendChild(el); el.click(); document.body.removeChild(el); toast.success("Downloaded!");
-                      }} className="bg-white/10 text-white hover:bg-white/20 border border-white/10 transition-all w-full">Download (.txt)</Button>
+                      }} className="bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground border border-border transition-all w-full">Download (.txt)</Button>
                       <p className="text-xs text-neutral-500 text-center">For printing, faxing, or mailing.</p>
                     </div>
                   </div>
@@ -696,12 +696,12 @@ export default function ReclaimDashboard() {
 
           <DialogFooter className="sm:justify-between items-center w-full mt-2 border-t border-white/5 pt-4 bg-transparent">
             <div className="flex gap-2 w-full sm:w-auto mb-2 sm:mb-0">
-              <Button type="button" variant="outline" onClick={handlePrev} disabled={!hasPrev} className="bg-transparent border-white/10 text-neutral-400 hover:text-white hover:bg-white/5 disabled:opacity-30 flex-1 sm:flex-none">Previous</Button>
-              <Button type="button" variant="outline" onClick={handleNext} disabled={!hasNext} className="bg-transparent border-white/10 text-neutral-400 hover:text-white hover:bg-white/5 disabled:opacity-30 flex-1 sm:flex-none">Next</Button>
+              <Button type="button" variant="outline" onClick={handlePrev} disabled={!hasPrev} className="bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-35 disabled:text-muted-foreground/70 flex-1 sm:flex-none">Previous</Button>
+              <Button type="button" variant="outline" onClick={handleNext} disabled={!hasNext} className="bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-35 disabled:text-muted-foreground/70 flex-1 sm:flex-none">Next</Button>
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
-              <Link href="/dashboard/history" passHref><Button type="button" variant="outline" className="bg-transparent border-white/10 text-neutral-400 hover:text-white hover:bg-white/5 w-full sm:w-auto">Saved Letters</Button></Link>
-              <Button type="button" variant="outline" onClick={closeModal} className="bg-transparent border-white/10 text-neutral-400 hover:text-white hover:bg-white/5 w-full sm:w-auto">Close</Button>
+              <Link href="/dashboard/history" passHref><Button type="button" variant="outline" className="bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-accent w-full sm:w-auto">Saved Letters</Button></Link>
+              <Button type="button" variant="outline" onClick={closeModal} className="bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-accent w-full sm:w-auto">Close</Button>
             </div>
           </DialogFooter>
         </DialogContent>

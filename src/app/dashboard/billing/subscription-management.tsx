@@ -220,7 +220,7 @@ export function SubscriptionManagement({
           <button
             onClick={handleOpenPortal}
             disabled={isLoadingPortal}
-            className="inline-flex items-center justify-center gap-2 h-11 px-6 text-sm font-medium rounded-lg border border-white/10 bg-white/5 text-neutral-200 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center gap-2 h-11 px-6 text-sm font-medium rounded-lg border border-border bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground transition-all disabled:opacity-45 disabled:cursor-not-allowed disabled:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             {isLoadingPortal ? (
               <div className="w-4 h-4 border-2 border-neutral-500 border-t-white rounded-full animate-spin" />
@@ -326,7 +326,7 @@ export function SubscriptionManagement({
                 <select
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
-                  className="mt-1.5 w-full h-9 px-3 rounded-lg bg-white/5 border border-white/10 text-neutral-200 text-sm focus:border-indigo-500 focus:outline-none transition-colors appearance-none cursor-pointer"
+                  className="mt-1.5 w-full h-9 px-3 rounded-lg bg-input/30 border border-border text-foreground text-sm focus-visible:border-ring focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 transition-colors appearance-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <option value="" className="bg-neutral-900 text-neutral-300">Select a reason...</option>
                   <option value="too_expensive" className="bg-neutral-900 text-neutral-300">Too expensive</option>
@@ -347,7 +347,7 @@ export function SubscriptionManagement({
                   onChange={(e) => setCancelComment(e.target.value)}
                   placeholder="We'd love to know how we can improve..."
                   rows={2}
-                  className="mt-1.5 w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-neutral-200 text-sm focus:border-indigo-500 focus:outline-none transition-colors resize-none placeholder:text-neutral-600"
+                  className="mt-1.5 w-full px-3 py-2 rounded-lg bg-input/30 border border-border text-foreground text-sm focus-visible:border-ring focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 transition-colors resize-none placeholder:text-muted-foreground disabled:opacity-60"
                 />
               </label>
             </div>
@@ -356,18 +356,18 @@ export function SubscriptionManagement({
               <button
                 onClick={() => setShowCancelDialog(false)}
                 disabled={isCanceling}
-                className="flex-1 h-10 rounded-lg text-sm font-medium border border-white/10 text-neutral-300 hover:bg-white/5 hover:text-white transition-all disabled:opacity-50"
+                className="flex-1 h-10 rounded-lg text-sm font-medium border border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-all disabled:opacity-45 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 Keep Subscription
               </button>
               <button
                 onClick={handleCancel}
                 disabled={isCanceling}
-                className="flex-1 h-10 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-500 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 h-10 rounded-lg text-sm font-medium bg-destructive/90 text-white hover:bg-destructive transition-all disabled:opacity-45 disabled:bg-muted disabled:text-muted-foreground flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 {isCanceling ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-red-300/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Canceling...
                   </>
                 ) : (
