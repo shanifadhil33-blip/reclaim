@@ -3,6 +3,7 @@
  * Lives outside React component lifecycle so navigating away from the dashboard
  * (e.g. to Settings) does NOT cancel an in-progress extraction.
  */
+import type { PDFDocumentProxy } from "pdfjs-dist";
 import { create } from "zustand";
 import { toast } from "sonner";
 
@@ -41,9 +42,6 @@ interface ExtractionState {
   progressPagesProcessed: number;
   progressTotalPages: number;
 
-  // ── Trial ──
-  trialExpired: boolean;
-
   // ── Actions ──
   loadFromStorage: () => void;
   setRows: (updater: DenialRow[] | ((prev: DenialRow[]) => DenialRow[])) => void;
@@ -52,13 +50,16 @@ interface ExtractionState {
   clearQueue: () => void;
   processQueue: () => Promise<void>;
   moveToTrash: (claims: DenialRow[]) => void;
-  dismissTrialExpired: () => void;
+}
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : "Request failed";
 }
 
 const CHUNK_SIZE = 3; // pages per API call — kept small for Vercel's 4.5MB body limit
 
 /** Convert a raw claim from the API into a DenialRow */
-function claimToRow(c: any, index: number): DenialRow {
+function claimToRow(c: Partial<DenialRow>, index: number): DenialRow {
   return {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${index}`,
     patientAccount: c.patientAccount || "Unknown",
@@ -106,13 +107,8 @@ async function sendChunkToAPI(
   );
 
   if (!res.ok) {
-    // 402 = trial expired — must abort entire pipeline, not just this chunk
-    if (res.status === 402 || data.code === "PAYMENT_REQUIRED") {
-      const err = new Error(data.error || "Your 14-day free trial has expired.");
-      (err as any).code = "PAYMENT_REQUIRED";
-      throw err;
-    }
-    throw new Error(data.error || `Server error (${res.status})`);
+    const message = typeof data?.error === "string" ? data.error : `Server error (${res.status})`;
+    throw new Error(message);
   }
 
   if (data.warnings?.length) {
@@ -123,7 +119,7 @@ async function sendChunkToAPI(
 
   if (!data.claims || data.claims.length === 0) return { rows: [], validationAttempts };
   return {
-    rows: data.claims.map((c: any, i: number) => claimToRow(c, i)),
+    rows: data.claims.map((c: Partial<DenialRow>, i: number) => claimToRow(c, i)),
     validationAttempts,
   };
 }
@@ -139,8 +135,6 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
   progressPercent: 0,
   progressPagesProcessed: 0,
   progressTotalPages: 0,
-  trialExpired: false,
-
   // ── Actions ──
   loadFromStorage: () => {
     if (get().isLoaded) return; // only run once
@@ -179,8 +173,6 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
   },
 
   clearQueue: () => set({ queuedFiles: [] }),
-
-  dismissTrialExpired: () => set({ trialExpired: false }),
 
   moveToTrash: (claimsToTrash) => {
     const existing = JSON.parse(localStorage.getItem("reclaim_eob_trash") || "[]");
@@ -261,7 +253,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
       }
 
       // First pass: count total pages across all files
-      const pdfDocs: { pdf: any; file: File }[] = [];
+      const pdfDocs: { pdf: PDFDocumentProxy; file: File }[] = [];
       let grandTotalPages = 0;
       for (const file of queuedFiles) {
         set({ extractionProgress: `Loading ${file.name}...` });
@@ -294,7 +286,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
 
       // ── Render helper (inline — needs canvas) ──
       const renderPageRange = async (
-        pdf: any,
+        pdf: PDFDocumentProxy,
         startPage: number,
         endPage: number,
         fileName: string,
@@ -323,7 +315,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
           canvas.height = viewport.height;
           ctx.fillStyle = "#FFFFFF";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
-          await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
+          await page.render({ canvasContext: ctx, viewport, canvas }).promise;
           const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
           console.log(
             `[PDF] Page ${i}: ${Math.round(dataUrl.length / 1024)}KB (${canvas.width}x${canvas.height}, scale=${scale.toFixed(1)})`
@@ -337,7 +329,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
 
       // ── Extract text helper ──
       const extractTextRange = async (
-        pdf: any,
+        pdf: PDFDocumentProxy,
         startPage: number,
         endPage: number,
         fileName: string
@@ -347,7 +339,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
           set({ extractionProgress: `Extracting text from ${fileName} — page ${i}...` });
           const page = await pdf.getPage(i);
           const tc = await page.getTextContent();
-          text += `\n--- PAGE ${i} ---\n${tc.items.map((item: any) => item.str).join(" ")}`;
+          text += `\n--- PAGE ${i} ---\n${tc.items.map((item) => ("str" in item ? item.str : "")).join(" ")}`;
         }
         return text;
       };
@@ -396,10 +388,9 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
                 } else {
                   set({ extractionPhase: "Data verified ✓" });
                 }
-              } catch (err: any) {
-                if ((err as any).code === "PAYMENT_REQUIRED") throw err;
-                console.warn(`[PIPELINE] Text failed for ${chunkLabel}: ${err.message}`);
-                toast.warning(`Pages ${chunkStart}-${chunkEnd}: ${err.message}`);
+              } catch (err: unknown) {
+                console.warn(`[PIPELINE] Text failed for ${chunkLabel}: ${errorText(err)}`);
+                toast.warning(`Pages ${chunkStart}-${chunkEnd}: ${errorText(err)}`);
               }
             }
           } else {
@@ -438,10 +429,9 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
                   }
                 }
               }
-            } catch (err: any) {
-              if ((err as any).code === "PAYMENT_REQUIRED") throw err;
-              console.warn(`[PIPELINE] Vision failed for ${chunkLabel}: ${err.message}`);
-              toast.warning(`Pages ${chunkStart}-${chunkEnd}: ${err.message}`);
+            } catch (err: unknown) {
+              console.warn(`[PIPELINE] Vision failed for ${chunkLabel}: ${errorText(err)}`);
+              toast.warning(`Pages ${chunkStart}-${chunkEnd}: ${errorText(err)}`);
             }
           }
 
@@ -478,14 +468,9 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
       } else {
         toast.warning("No denied claims found in any of the uploaded EOBs.");
       }
-    } catch (err: any) {
-      if ((err as any).code === "PAYMENT_REQUIRED") {
-        // Clean UI — set flag for the upgrade modal, no console.error
-        set({ trialExpired: true });
-      } else {
-        console.error("[PIPELINE FATAL]", err);
-        toast.error(err.message || "Failed to process PDFs. Please try again.");
-      }
+    } catch (err: unknown) {
+      console.error("[PIPELINE FATAL]", err);
+      toast.error(errorText(err) || "Failed to process PDFs. Please try again.");
     } finally {
       set({
         isExtracting: false,

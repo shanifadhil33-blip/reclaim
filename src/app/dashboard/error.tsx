@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import * as Sentry from "@sentry/nextjs";
 import { Button } from "@/components/ui/button";
 
@@ -61,16 +62,16 @@ export default function DashboardError({
       <div className="flex gap-3">
         <Button
           onClick={reset}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500/50"
+          className="h-11 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500/50"
         >
           Try Again
         </Button>
         <Button
           variant="outline"
-          onClick={() => (window.location.href = "/dashboard")}
-          className="bg-transparent border-white/10 text-neutral-300 hover:bg-white/5 hover:text-white"
+          render={<Link href="/dashboard" />}
+          className="h-11 bg-transparent border-white/10 text-neutral-300 hover:bg-white/5 hover:text-white"
         >
-          Back to Dashboard
+          ← Worklist
         </Button>
       </div>
     </div>

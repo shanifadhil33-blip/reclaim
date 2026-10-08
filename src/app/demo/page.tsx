@@ -1,439 +1,274 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Suspense, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { OptionMenu } from "@/components/option-menu";
+import { PortfolioNotice } from "@/components/portfolio-notice";
+import { PublicShell } from "@/components/public-shell";
 import { DEMO_CLAIMS } from "@/lib/demo-data";
 import type { DenialRow } from "@/stores/extraction-store";
 
-function timeAgo(isoString: string): string {
-  const now = Date.now();
-  const then = new Date(isoString).getTime();
-  const diffSec = Math.floor((now - then) / 1000);
-  if (diffSec < 30) return "just now";
-  if (diffSec < 60) return `${diffSec}s ago`;
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin} min ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  return `${diffDay}d ago`;
+const SORTS = [
+  { value: "found", label: "Newest sample" },
+  { value: "patient", label: "Patient name" },
+  { value: "payer", label: "Payer name" },
+  { value: "amount", label: "Amount, high to low" },
+];
+
+const FILTERS = [
+  { value: "all", label: "All statuses" },
+  { value: "completed", label: "Letter ready" },
+  { value: "needs_notes", label: "Needs notes" },
+];
+
+function money(value: string): number {
+  const parsed = Number(value.replace(/[^0-9.]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export default function LiveDemoPage() {
-  const [rows] = useState<DenialRow[]>(DEMO_CLAIMS);
-  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
-  const [showSampleLetter, setShowSampleLetter] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+function DemoScreen() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const sort = SORTS.some((item) => item.value === searchParams.get("sort"))
+    ? (searchParams.get("sort") as string)
+    : "found";
+  const status = FILTERS.some((item) => item.value === searchParams.get("status"))
+    ? (searchParams.get("status") as string)
+    : "all";
 
-  const selectedRow = rows.find((r) => r.id === selectedRowId) ?? null;
-  const selectedIndex = rows.findIndex((r) => r.id === selectedRowId);
-  const hasNext = selectedIndex !== -1 && selectedIndex < rows.length - 1;
-  const hasPrev = selectedIndex > 0;
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [resetOpen, setResetOpen] = useState(false);
 
-  const blockUpload = () => {
-    toast.message("Sign in to process custom EOB files", {
-      description: "Demo Mode shows sample denials only. Create a free account to upload your own EOBs.",
-      action: {
-        label: "Sign in",
-        onClick: () => {
-          window.location.href = "/login?mode=signup";
-        },
-      },
+  const rows = useMemo(() => {
+    const filtered = DEMO_CLAIMS.filter((row) => status === "all" || row.status === status);
+    const copy = [...filtered];
+    copy.sort((a, b) => {
+      if (sort === "patient") return a.patientName.localeCompare(b.patientName);
+      if (sort === "payer") {
+        return a.payerName.localeCompare(b.payerName) || a.patientName.localeCompare(b.patientName);
+      }
+      if (sort === "amount") return money(b.billedAmount) - money(a.billedAmount);
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  };
+    return copy;
+  }, [sort, status]);
 
-  const openModal = (row: DenialRow) => {
-    setSelectedRowId(row.id);
-    setShowSampleLetter(row.status === "completed");
-  };
+  const selected = rows.find((row) => row.id === selectedId) ?? DEMO_CLAIMS.find((row) => row.id === selectedId) ?? null;
+  const letter = selected ? (drafts[selected.id] ?? selected.generatedLetter) : "";
 
-  const closeModal = () => {
-    setSelectedRowId(null);
-    setShowSampleLetter(false);
-  };
+  function setParam(key: "sort" | "status", value: string, fallback: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === fallback) params.delete(key);
+    else params.set(key, value);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
 
-  const handleNext = () => {
-    if (!hasNext) return;
-    openModal(rows[selectedIndex + 1]!);
-  };
+  function copyLetter() {
+    if (!letter) return;
+    void navigator.clipboard.writeText(letter);
+    toast.success("Copied the fictional letter.");
+  }
 
-  const handlePrev = () => {
-    if (!hasPrev) return;
-    openModal(rows[selectedIndex - 1]!);
-  };
-
-  const copyLetter = () => {
-    if (!selectedRow?.generatedLetter) return;
-    void navigator.clipboard.writeText(selectedRow.generatedLetter);
-    toast.success("Copied sample letter!");
-  };
-
-  const downloadLetter = () => {
-    if (!selectedRow?.generatedLetter) return;
-    const el = document.createElement("a");
-    const blob = new Blob([selectedRow.generatedLetter], { type: "text/plain" });
-    el.href = URL.createObjectURL(blob);
-    el.download = `Demo_Appeal_${selectedRow.payerName}_${selectedRow.dateOfService.replace(/\//g, "-")}.txt`;
-    document.body.appendChild(el);
-    el.click();
-    document.body.removeChild(el);
-    toast.success("Downloaded sample letter!");
-  };
+  function downloadLetter(row: DenialRow) {
+    if (!letter) return;
+    const link = document.createElement("a");
+    const blob = new Blob([letter], { type: "text/plain" });
+    link.href = URL.createObjectURL(blob);
+    link.download = `Fictional_Appeal_${row.patientAccount}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(link.href);
+    toast.success("Downloaded the fictional letter.");
+  }
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-neutral-950 text-neutral-50 font-sans selection:bg-indigo-500/30">
-      {/* Demo banner */}
-      <div className="sticky top-0 z-50 border-b border-amber-500/20 bg-amber-500/10 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p className="text-sm font-medium text-amber-200/90">
-            Portfolio project. Use fictional data only. Not for real patient information.
-          </p>
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href="/"
-              className="inline-flex h-11 items-center text-xs text-neutral-400 hover:text-white transition-colors"
-            >
-              Back to home
-            </Link>
-            <Link
-              href="/login?mode=signup"
-              className={buttonVariants({
-                size: "sm",
-                className:
-                  "h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground text-xs font-semibold px-4",
-              })}
-            >
-              Sign up free
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      <div className="relative mx-auto w-full max-w-7xl overflow-hidden px-4 py-8 sm:px-6 animate-in fade-in slide-in-from-bottom-4 duration-200 pb-16">
-        <div className="absolute top-0 left-0 h-[500px] w-full max-w-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
-
-        <div className="relative z-10 mb-8">
-          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-2">
-            EOB Denial Triage
-          </h1>
-          <p className="text-neutral-400">
-            Four made-up denials. Names, payers, and letters are fictional. Click one to read the sample.
+    <PublicShell back={{ href: "/", label: "Home" }}>
+      <div className="space-y-6">
+        <PortfolioNotice className="rounded-2xl" />
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Fictional denial demo</h1>
+          <p className="mt-2 max-w-2xl text-neutral-400">
+            Four made-up claims. Open one, edit the sample letter, then copy or download it. Nothing here is a real patient, and nothing is saved to an account.
           </p>
         </div>
 
-        {/* Disabled dropzone */}
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragging(true);
-          }}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            setIsDragging(false);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            setIsDragging(false);
-            blockUpload();
-          }}
-          onClick={blockUpload}
-          className={`relative z-10 w-full mb-8 rounded-2xl border-2 border-dashed transition-all duration-300 cursor-pointer backdrop-blur-sm ${
-            isDragging
-              ? "border-amber-500 bg-amber-500/10"
-              : "border-white/10 bg-white/5 hover:border-white/20"
-          }`}
-        >
-          <div className="flex flex-col items-center justify-center p-12 text-center">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="48"
-              height="48"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="mb-4 text-neutral-500"
-            >
-              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-              <polyline points="14 2 14 8 20 8" />
-              <path d="M12 18v-6" />
-              <path d="m9 15 3-3 3 3" />
-            </svg>
-            <h3 className="text-xl font-semibold text-white mb-2">
-              Drop EOB PDFs here or click to browse
-            </h3>
-            <p className="text-neutral-400 max-w-lg">
-              Upload is disabled in Demo Mode. Sign in to process your own files.
-            </p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <p className="mb-1 text-xs text-neutral-500">Sort</p>
+            <OptionMenu label="Sort" value={sort} options={SORTS} onChange={(value) => setParam("sort", value, "found")} widthClass="w-60" />
           </div>
+          <div>
+            <p className="mb-1 text-xs text-neutral-500">Filter</p>
+            <OptionMenu
+              label="Filter"
+              value={status}
+              options={FILTERS}
+              onChange={(value) => setParam("status", value, "all")}
+              widthClass="w-[11rem]"
+            />
+          </div>
+          <p className="pb-2 text-sm text-neutral-400">
+            Showing {rows.length} of {DEMO_CLAIMS.length}
+          </p>
         </div>
 
-        {/* Triage table */}
-        <Card className="relative z-10 shadow-lg border-white/10 bg-neutral-900/40 backdrop-blur-2xl text-white overflow-hidden gap-0 p-0">
-          <CardHeader className="border-b border-white/10 p-4 flex flex-row flex-wrap items-center justify-between gap-3 bg-[#141414]">
-            <div>
-              <CardTitle className="text-xl tracking-tight">
-                Denied Claims ({rows.length})
-              </CardTitle>
-              <CardDescription className="text-neutral-400">
-                Click any row to view clinical notes and sample appeal letters.
-              </CardDescription>
-            </div>
-            <Badge className="bg-amber-500/10 text-amber-300 border-amber-500/20 hover:bg-amber-500/10">
-              Sample data
-            </Badge>
-          </CardHeader>
-          <ul className="md:hidden divide-y divide-white/10">
+        {rows.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
+            <p className="text-neutral-300">No sample claims match this filter.</p>
+            <button
+              type="button"
+              onClick={() => setParam("status", "all", "all")}
+              className="mt-4 inline-flex h-11 items-center rounded-lg border border-white/15 px-4 text-sm text-white"
+            >
+              Clear filter
+            </button>
+          </div>
+        ) : (
+          <ul className="divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/40">
             {rows.map((row) => (
               <li key={row.id}>
                 <button
                   type="button"
-                  onClick={() => openModal(row)}
-                  className="w-full px-4 py-4 text-left hover:bg-white/5 transition-colors"
+                  onClick={() => setSelectedId(row.id)}
+                  className="flex w-full flex-col gap-2 px-4 py-4 text-left hover:bg-white/5 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-medium text-neutral-100">{row.patientName}</div>
-                      <div className="text-xs text-neutral-500">{row.patientAccount}</div>
-                    </div>
-                    {row.status === "completed" ? (
-                      <Badge className="shrink-0 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/20">
-                        Completed
-                      </Badge>
-                    ) : (
-                      <Badge className="shrink-0 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border-amber-500/20">
-                        Needs Notes
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="mt-2 text-sm text-neutral-300">
-                    {row.dateOfService} · {row.billedCPT} · {row.payerName}
-                  </div>
-                  <div className="mt-1 text-xs font-mono text-red-400">{row.denialCode}</div>
-                  <div className="mt-1 text-xs text-neutral-500">{row.denialReason}</div>
+                  <span className="min-w-0">
+                    <span className="block font-medium text-white">{row.patientName}</span>
+                    <span className="mt-1 block text-sm text-neutral-400">
+                      {row.dateOfService} · {row.billedCPT} · {row.payerName} · {row.billedAmount}
+                    </span>
+                    <span className="mt-1 block font-mono text-xs text-red-300">{row.denialCode}</span>
+                  </span>
+                  <Badge
+                    className={
+                      row.status === "completed"
+                        ? "w-fit bg-emerald-500/10 text-emerald-300"
+                        : "w-fit bg-amber-500/10 text-amber-200"
+                    }
+                  >
+                    {row.status === "completed" ? "Letter ready" : "Needs notes"}
+                  </Badge>
                 </button>
               </li>
             ))}
           </ul>
-          <div className="hidden md:block overflow-x-auto max-h-[calc(100vh-280px)]">
-            <Table>
-              <TableHeader className="bg-[#0f172a] sticky top-0 z-10">
-                <TableRow className="border-white/5 hover:bg-transparent">
-                  <TableHead className="text-neutral-400 font-semibold h-11 bg-[#0f172a]">Patient</TableHead>
-                  <TableHead className="text-neutral-400 font-semibold h-11 bg-[#0f172a]">DOS</TableHead>
-                  <TableHead className="text-neutral-400 font-semibold h-11 bg-[#0f172a]">Code</TableHead>
-                  <TableHead className="text-neutral-400 font-semibold h-11 bg-[#0f172a]">Denial</TableHead>
-                  <TableHead className="text-neutral-400 font-semibold h-11 bg-[#0f172a]">Payer</TableHead>
-                  <TableHead className="text-neutral-400 font-semibold h-11 bg-[#0f172a]">Found</TableHead>
-                  <TableHead className="text-neutral-400 font-semibold h-11 text-right pr-6 bg-[#0f172a]">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className="border-white/5 border-b hover:bg-white/5 cursor-pointer transition-colors"
-                    onClick={() => openModal(row)}
-                  >
-                    <TableCell className="font-medium text-neutral-200">
-                      <div>{row.patientName}</div>
-                      <div className="text-xs text-neutral-500">{row.patientAccount}</div>
-                    </TableCell>
-                    <TableCell className="text-neutral-300">{row.dateOfService}</TableCell>
-                    <TableCell className="text-neutral-300">
-                      <span className="bg-neutral-800 px-2 py-1 rounded text-xs font-mono border border-white/5">
-                        {row.billedCPT}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-neutral-300 max-w-[200px]">
-                      <span className="text-red-400 font-mono text-xs">{row.denialCode}</span>
-                      <div className="text-xs text-neutral-500 truncate" title={row.denialReason}>
-                        {row.denialReason}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-neutral-300">{row.payerName}</TableCell>
-                    <TableCell className="text-neutral-500 text-xs font-mono whitespace-nowrap">
-                      {timeAgo(row.createdAt)}
-                    </TableCell>
-                    <TableCell className="text-right pr-6">
-                      {row.status === "completed" ? (
-                        <Badge className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/20 px-3 py-1">
-                          Completed
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border-amber-500/20 px-3 py-1">
-                          Needs Notes
-                        </Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </Card>
-
-        {/* Detail modal */}
-        <Dialog open={!!selectedRowId} onOpenChange={(open) => !open && closeModal()}>
-          <DialogContent className="sm:max-w-xl bg-neutral-900/60 backdrop-blur-3xl border border-white/10 text-white shadow-2xl max-h-[90dvh] overflow-y-auto pt-10">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-semibold tracking-tight mb-2">
-                {showSampleLetter ? "Sample Appeal Letter" : "Clinical Notes"}
-              </DialogTitle>
-              <DialogDescription className="text-neutral-400">
-                Made-up sample. Not a real patient. Sign in only if you want to try the uploader with fictional files.
-              </DialogDescription>
-            </DialogHeader>
-
-            {selectedRow && (
-              <div className="space-y-6 my-4">
-                <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-xs text-neutral-500 block mb-0.5">Patient</span>
-                    <span className="text-neutral-200">{selectedRow.patientName}</span>
-                  </div>
-                  <div>
-                    <span className="text-xs text-neutral-500 block mb-0.5">Account</span>
-                    <span className="text-neutral-200 font-mono">{selectedRow.patientAccount}</span>
-                  </div>
-                  <div>
-                    <span className="text-xs text-neutral-500 block mb-0.5">DOS</span>
-                    <span className="text-neutral-200">{selectedRow.dateOfService}</span>
-                  </div>
-                  <div>
-                    <span className="text-xs text-neutral-500 block mb-0.5">CPT</span>
-                    <span className="text-neutral-200 font-mono">{selectedRow.billedCPT}</span>
-                  </div>
-                  <div>
-                    <span className="text-xs text-neutral-500 block mb-0.5">Denial</span>
-                    <span className="text-red-400 font-mono">{selectedRow.denialCode}</span>
-                  </div>
-                  <div>
-                    <span className="text-xs text-neutral-500 block mb-0.5">Payer</span>
-                    <span className="text-neutral-200">{selectedRow.payerName}</span>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <span className="text-xs text-neutral-500 block mb-0.5">Reason</span>
-                    <span className="text-neutral-300">{selectedRow.denialReason}</span>
-                  </div>
-                </div>
-
-                {!showSampleLetter ? (
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-indigo-300 font-semibold flex items-center gap-2 mb-2">
-                        Pre-loaded EMR Clinical Notes
-                      </Label>
-                      <Textarea
-                        readOnly
-                        value={selectedRow.clinicalNotes}
-                        className="min-h-[160px] bg-white/5 border-white/10 text-neutral-300 text-sm resize-y"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={() => setShowSampleLetter(true)}
-                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white h-11 rounded-lg border border-indigo-500/50"
-                    >
-                      Preview Sample Appeal Letter
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label className="text-emerald-400 font-semibold">Generated Letter</Label>
-                      {selectedRow.status !== "completed" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowSampleLetter(false)}
-                          className="text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 text-xs h-8"
-                        >
-                          Back to notes
-                        </Button>
-                      )}
-                    </div>
-                    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-4 max-h-[300px] overflow-y-auto text-sm text-neutral-300 whitespace-pre-wrap">
-                      {selectedRow.generatedLetter}
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                      <Button
-                        type="button"
-                        onClick={copyLetter}
-                        className="bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground border border-border w-full"
-                      >
-                        Copy Text
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={downloadLetter}
-                        className="bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground border border-border w-full"
-                      >
-                        Download (.txt)
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <DialogFooter className="sm:justify-between items-center w-full mt-2 border-t border-white/5 pt-4">
-              <div className="flex gap-2 w-full sm:w-auto mb-2 sm:mb-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handlePrev}
-                  disabled={!hasPrev}
-                  className="bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-35 disabled:text-muted-foreground/70 flex-1 sm:flex-none"
-                >
-                  Previous
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleNext}
-                  disabled={!hasNext}
-                  className="bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-35 disabled:text-muted-foreground/70 flex-1 sm:flex-none"
-                >
-                  Next
-                </Button>
-              </div>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Link href="/login?mode=signup" className="w-full sm:w-auto">
-                  <Button
-                    type="button"
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground w-full sm:w-auto"
-                  >
-                    Sign up to use real EOBs
-                  </Button>
-                </Link>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={closeModal}
-                  className="bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-accent w-full sm:w-auto"
-                >
-                  Close
-                </Button>
-              </div>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        )}
       </div>
-    </div>
+
+      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelectedId(null)}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto border-white/10 bg-neutral-900 text-white sm:max-w-xl">
+          {selected ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Fictional sample letter</DialogTitle>
+                <DialogDescription className="text-neutral-400">
+                  {selected.patientName} is not a real patient. {selected.payerName}. Denial {selected.denialCode}.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-2 gap-3 rounded-xl border border-white/10 bg-white/5 p-4 text-sm">
+                <div>
+                  <span className="block text-xs text-neutral-500">Account</span>
+                  {selected.patientAccount}
+                </div>
+                <div>
+                  <span className="block text-xs text-neutral-500">Amount</span>
+                  {selected.billedAmount}
+                </div>
+                <div className="col-span-2">
+                  <span className="block text-xs text-neutral-500">Reason</span>
+                  {selected.denialReason}
+                </div>
+              </div>
+              <div>
+                <Label className="mb-2 text-neutral-300">Sample notes</Label>
+                <p className="whitespace-pre-wrap rounded-lg border border-white/10 bg-black/20 p-3 text-sm text-neutral-300">
+                  {selected.clinicalNotes}
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="demo-letter" className="mb-2 text-neutral-300">
+                  Letter draft
+                </Label>
+                <Textarea
+                  id="demo-letter"
+                  value={letter}
+                  onChange={(event) =>
+                    setDrafts((current) => ({ ...current, [selected.id]: event.target.value }))
+                  }
+                  className="min-h-48 border-white/10 bg-black/30 text-sm text-neutral-100"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <Button type="button" onClick={copyLetter} className="h-11 bg-indigo-600 text-white hover:bg-indigo-500">
+                  Copy letter
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => downloadLetter(selected)}
+                  className="h-11 border-white/15 bg-transparent text-white hover:bg-white/10"
+                >
+                  Download
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setResetOpen(true)}
+                  className="h-11 border-white/15 bg-transparent text-white hover:bg-white/10"
+                >
+                  Reset letter
+                </Button>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={resetOpen}
+        title="Reset this sample letter?"
+        body="Your edits on this fictional letter are discarded. The other samples stay as they are."
+        confirmLabel="Reset letter"
+        pendingLabel="Resetting…"
+        pending={false}
+        onCancel={() => setResetOpen(false)}
+        onConfirm={() => {
+          if (selected) {
+            setDrafts((current) => {
+              const next = { ...current };
+              delete next[selected.id];
+              return next;
+            });
+          }
+          setResetOpen(false);
+          toast.success("Sample letter restored.");
+        }}
+      />
+    </PublicShell>
+  );
+}
+
+export default function DemoPage() {
+  return (
+    <Suspense fallback={<div className="min-h-dvh bg-neutral-950" />}>
+      <DemoScreen />
+    </Suspense>
   );
 }

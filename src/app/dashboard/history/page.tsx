@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import { ClearAllAppealsButton } from "./HistoryActions";
 import HistoryTableClient from "./HistoryTableClient";
 
@@ -35,17 +37,19 @@ export default async function HistoryPage() {
     <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-200 pb-12">
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors mb-6 group">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform"><path d="m15 18-6-6 6-6"/></svg>
-            Back to Dashboard
+          <BackLink href="/dashboard" label="Worklist" />
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-2">History</h1>
+          <p className="text-neutral-400">Letters saved to this account. Deleted ones sit in the recycle bin.</p>
+          <Link href="/dashboard/trash" className="mt-3 inline-flex h-11 items-center text-sm text-indigo-300 hover:text-indigo-200">
+            Recycle bin
           </Link>
-          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-2">Appeal History</h1>
-          <p className="text-neutral-400">Review your previously generated clinical appeals.</p>
         </div>
         {appeals && appeals.length > 0 && <ClearAllAppealsButton />}
       </div>
       
-      <HistoryTableClient initialAppeals={appeals || []} />
+      <Suspense fallback={<div className="h-40 rounded-2xl bg-white/5" />}>
+        <HistoryTableClient initialAppeals={appeals || []} />
+      </Suspense>
     </div>
   );
 }

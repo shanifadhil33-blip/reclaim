@@ -11,8 +11,9 @@ const FREE_MODELS = [
   "openrouter/free",
 ];
 
-const SYSTEM_PROMPT = `You are a medical billing appeals expert. 
-Write a highly professional, legally persuasive appeal letter to an insurance company protesting a claim denial. 
+const SYSTEM_PROMPT = `You are a medical billing appeals assistant.
+Write a clear professional appeal letter to an insurance company about a claim denial.
+The letter is a draft for a person to review. Do not call it legal advice.
 Do not use Markdown formatting. Return only the raw letter text.
 Structure the letter with:
 - Date
@@ -23,7 +24,20 @@ Structure the letter with:
 - A demand for payment or reprocessing
 - A professional sign-off. Use "[Billing Representative]" as the signer name and "[Practice / Provider]" as the practice name in the signature block.`;
 
-async function generateLetter(model: string, data: any, apiKey: string) {
+type LetterInput = {
+  insuranceCompany?: string;
+  dateOfService?: string;
+  billedCode?: string;
+  denialReason?: string;
+  patientAccount?: string;
+  clinicalNotes?: string;
+};
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : "Unknown failure";
+}
+
+async function generateLetter(model: string, data: LetterInput, apiKey: string) {
   const userPrompt = `
 Insurance Company: ${data.insuranceCompany}
 Date of Service: ${data.dateOfService}
@@ -58,9 +72,9 @@ Please write the appeal letter based on these details.
       })
     });
     clearTimeout(timeoutId);
-  } catch (error: any) {
+  } catch (error: unknown) {
     clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
+    if (error instanceof Error && error.name === 'AbortError') {
       throw new Error(`[${model}] Connection timed out after 25 seconds.`);
     }
     throw error;
@@ -97,29 +111,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    // Check trial / subscription
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("trial_ends_at, subscription_status")
-      .eq("id", user.id)
-      .single();
-
-    if (profile) {
-      const now = new Date();
-      const trialEndsAt = new Date(profile.trial_ends_at);
-      const hasActiveSubscription = ['active', 'trialing'].includes(profile.subscription_status);
-      if (!hasActiveSubscription && now > trialEndsAt) {
-         return NextResponse.json(
-           { 
-             error: "Your 14-day free trial has expired.", 
-             code: "PAYMENT_REQUIRED", 
-             checkoutUrl: process.env.NEXT_PUBLIC_POLAR_CHECKOUT_URL 
-           }, 
-           { status: 402 }
-         );
-      }
-    }
-
     const body = await req.json();
     const { insuranceCompany, dateOfService, billedCode, denialReason, clinicalNotes, patientAccount } = body;
 
@@ -141,9 +132,9 @@ export async function POST(req: Request) {
         generatedLetter = await generateLetter(model, body, OPENROUTER_API_KEY);
         console.log(`[GENERATE] Success with ${model} (${generatedLetter.length} chars)`);
         break;
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.warn(`[GENERATE] ${model} failed`);
-        errors.push(err.message);
+        errors.push(errorText(err));
       }
     }
 
@@ -190,10 +181,10 @@ export async function POST(req: Request) {
 
     console.log("[GENERATE] Saved. Appeal ID:", appealData?.id);
     return NextResponse.json({ success: true, appeal: appealData, letter: generatedLetter });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GENERATE FATAL]", error);
     return NextResponse.json(
-      { error: `Internal Server Error: ${error.message || "Unknown failure"}` },
+      { error: `Internal Server Error: ${errorText(error)}` },
       { status: 500 }
     );
   }

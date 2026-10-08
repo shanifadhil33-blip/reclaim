@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet, _headers) {
+        setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           cookieJar.push(...cookiesToSet)
         },
@@ -35,9 +35,7 @@ export async function POST(request: NextRequest) {
 
   revalidatePath('/', 'layout')
 
-  const response = NextResponse.redirect(new URL('/', request.url), {
-    status: 302,
-  })
+  const response = NextResponse.json({ ok: true })
 
   const latestByName = new Map<string, (typeof cookieJar)[number]>()
   for (const cookie of cookieJar) {

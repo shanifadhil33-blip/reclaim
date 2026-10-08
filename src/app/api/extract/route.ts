@@ -18,6 +18,31 @@ const DeniedClaimSchema = z.object({
 });
 
 const DeniedClaimsArraySchema = z.array(DeniedClaimSchema);
+type DeniedClaim = z.infer<typeof DeniedClaimSchema>;
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : "Unknown failure";
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+type ChatMessage = {
+  role: "system" | "user" | "assistant";
+  content: string | Array<Record<string, unknown>>;
+};
+
+type CompletionRequest = {
+  model: string;
+  messages: ChatMessage[];
+  temperature: number;
+  max_tokens: number;
+  response_format?: { type: "json_object" };
+};
 
 // Stringify the schema shape so the LLM knows exactly what to produce
 const SCHEMA_DEFINITION = JSON.stringify(
@@ -82,11 +107,13 @@ const MAX_VALIDATION_ATTEMPTS = 3;
 /**
  * Normalize a single claim object — maps any casing/key variation to our strict schema.
  */
-function normalizeClaim(item: any): any {
-  // Helper: pick the first truthy value from multiple possible keys
+function normalizeClaim(item: unknown): DeniedClaim {
+  const record = asRecord(item);
   const pick = (...keys: string[]): string => {
     for (const key of keys) {
-      if (item[key] && String(item[key]).trim()) return String(item[key]).trim();
+      const value = record[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+      if (typeof value === "number" && String(value).trim()) return String(value).trim();
     }
     return "Unknown";
   };
@@ -145,7 +172,7 @@ function normalizeClaim(item: any): any {
  * Robust JSON extraction + normalization.
  * Handles markdown fences, leading text, trailing text, and key mismatches.
  */
-function sanitizeAndParseJSON(raw: string): any[] {
+function sanitizeAndParseJSON(raw: string): DeniedClaim[] {
   let text = raw.trim();
 
   // Strip markdown code fences (```json ... ``` or ``` ... ```)
@@ -172,8 +199,8 @@ function sanitizeAndParseJSON(raw: string): any[] {
     const normalized = parsed.map(item => normalizeClaim(item));
     console.log(`[EXTRACT] Normalized ${normalized.length} claims.`);
     return normalized;
-  } catch (e: any) {
-    console.error("[EXTRACT] JSON.parse failed:", e.message, "Input length:", jsonString.length);
+  } catch (e: unknown) {
+    console.error("[EXTRACT] JSON.parse failed:", errorText(e), "Input length:", jsonString.length);
     return [];
   }
 }
@@ -182,7 +209,7 @@ function sanitizeAndParseJSON(raw: string): any[] {
  * Validate parsed claims against the Zod schema.
  * Returns { success, data, error } where error is a human-readable string.
  */
-function validateClaims(claims: any[]): {
+function validateClaims(claims: DeniedClaim[]): {
   success: boolean;
   data?: z.infer<typeof DeniedClaimsArraySchema>;
   error?: string;
@@ -207,12 +234,12 @@ function validateClaims(claims: any[]): {
  * Attempts up to MAX_VALIDATION_ATTEMPTS times, feeding Zod errors back to the LLM.
  */
 async function extractWithModel(model: string, base64Images: string[], apiKey: string): Promise<{
-  claims: any[];
+  claims: DeniedClaim[];
   validationAttempts: number;
 }> {
   console.log(`[EXTRACT] Trying model: ${model} with ${base64Images.length} pages`);
 
-  const imageContent: any[] = base64Images.map((img) => ({
+  const imageContent: Array<Record<string, unknown>> = base64Images.map((img) => ({
     type: "image_url",
     image_url: {
       url: img.startsWith("data:") ? img : `data:image/png;base64,${img}`,
@@ -220,7 +247,7 @@ async function extractWithModel(model: string, base64Images: string[], apiKey: s
   }));
 
   // Build initial messages
-  const messages: any[] = [
+  const messages: ChatMessage[] = [
     { role: "system", content: EXTRACTION_SYSTEM_PROMPT },
     {
       role: "user",
@@ -240,14 +267,13 @@ async function extractWithModel(model: string, base64Images: string[], apiKey: s
     const timeoutId = setTimeout(() => controller.abort(), 90000);
 
     try {
-      const requestBody: any = {
+      const requestBody: CompletionRequest = {
         model,
         messages,
         temperature: 0.1,
         max_tokens: 8000,
       };
 
-      // Use response_format for models that support it
       if (supportsJsonMode) {
         requestBody.response_format = { type: "json_object" };
       }
@@ -320,9 +346,9 @@ async function extractWithModel(model: string, base64Images: string[], apiKey: s
         console.error(`[EXTRACT] ❌ All ${MAX_VALIDATION_ATTEMPTS} validation attempts failed for ${model}. Returning best-effort data. Last error: ${validation.error}`);
         return { claims: parsed, validationAttempts: attempt };
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       clearTimeout(timeoutId);
-      if (error.name === "AbortError") {
+      if (error instanceof Error && error.name === "AbortError") {
         throw new Error(`${model} timed out after 90 seconds`);
       }
       throw error;
@@ -337,12 +363,12 @@ async function extractWithModel(model: string, base64Images: string[], apiKey: s
  * Text-mode extraction with self-correction retry loop.
  */
 async function extractTextWithRetry(model: string, text: string, apiKey: string): Promise<{
-  claims: any[];
+  claims: DeniedClaim[];
   validationAttempts: number;
 }> {
   console.log(`[EXTRACT] Trying text model: ${model}`);
 
-  const messages: any[] = [
+  const messages: ChatMessage[] = [
     { role: "system", content: EXTRACTION_SYSTEM_PROMPT },
     {
       role: "user",
@@ -359,7 +385,7 @@ async function extractTextWithRetry(model: string, text: string, apiKey: string)
     const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     try {
-      const requestBody: any = {
+      const requestBody: CompletionRequest = {
         model,
         messages,
         temperature: 0.1,
@@ -418,9 +444,9 @@ async function extractTextWithRetry(model: string, text: string, apiKey: string)
         console.error(`[EXTRACT] ❌ Text mode: All ${MAX_VALIDATION_ATTEMPTS} attempts failed for ${model}. Returning best-effort data.`);
         return { claims: parsed, validationAttempts: attempt };
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       clearTimeout(timeoutId);
-      if (error.name === "AbortError") {
+      if (error instanceof Error && error.name === "AbortError") {
         throw new Error(`${model} timed out after 60 seconds`);
       }
       throw error;
@@ -438,41 +464,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    // Check trial / subscription — block extraction if expired
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("trial_ends_at, subscription_status")
-      .eq("id", user.id)
-      .single();
-
-    if (profile) {
-      const now = new Date();
-      const trialEndsAt = new Date(profile.trial_ends_at);
-      const hasActiveSubscription = ['active', 'trialing'].includes(profile.subscription_status);
-      if (!hasActiveSubscription && now > trialEndsAt) {
-        return NextResponse.json(
-          {
-            error: "Your 14-day free trial has expired.",
-            code: "PAYMENT_REQUIRED",
-            checkoutUrl: process.env.NEXT_PUBLIC_POLAR_CHECKOUT_URL
-          },
-          { status: 402 }
-        );
-      }
-    }
-
-    let body: any;
+    let images: string[] = [];
+    let text = "";
     try {
-      body = await req.json();
-    } catch (parseError: any) {
-      console.error("[EXTRACT] Failed to parse request body:", parseError.message);
+      const parsed: unknown = await req.json();
+      const record = asRecord(parsed);
+      text = typeof record.text === "string" ? record.text : "";
+      images = Array.isArray(record.images)
+        ? record.images.filter((item): item is string => typeof item === "string")
+        : [];
+    } catch (parseError: unknown) {
+      console.error("[EXTRACT] Failed to parse request body:", errorText(parseError));
       return NextResponse.json({ error: "Request payload too large or malformed. Try uploading fewer pages at once." }, { status: 413 });
     }
 
-    const { images, text } = body;
-    const isTextMode = !!text && typeof text === "string" && text.length > 50;
+    const isTextMode = text.length > 50;
 
-    if (!isTextMode && (!images || !Array.isArray(images) || images.length === 0)) {
+    if (!isTextMode && images.length === 0) {
       return NextResponse.json({ error: "No images or text provided." }, { status: 400 });
     }
 
@@ -481,7 +489,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "API misconfigured. Missing OPENROUTER_API_KEY." }, { status: 500 });
     }
 
-    let deniedClaims: any[] = [];
+    let deniedClaims: DeniedClaim[] = [];
     const errors: string[] = [];
     let totalValidationAttempts = 0;
 
@@ -502,9 +510,9 @@ export async function POST(req: Request) {
           totalValidationAttempts = result.validationAttempts;
           console.log(`[EXTRACT] Text mode parsed ${deniedClaims.length} claims (validated in ${totalValidationAttempts} attempt(s))`);
           break;
-        } catch (err: any) {
-          console.warn(`[EXTRACT] Text model ${model} failed: ${err.message}`);
-          errors.push(`${model}: ${err.message}`);
+        } catch (err: unknown) {
+          console.warn(`[EXTRACT] Text model ${model} failed: ${errorText(err)}`);
+          errors.push(`${model}: ${errorText(err)}`);
         }
       }
     }
@@ -533,9 +541,9 @@ export async function POST(req: Request) {
           batchSuccess = true;
           console.log(`[EXTRACT] Batch ${batchIndex + 1}/${batches.length} succeeded with ${model}: ${result.claims.length} claims (validated in ${result.validationAttempts} attempt(s))`);
           break;
-        } catch (err: any) {
-          console.warn(`[EXTRACT] ${model} failed on batch ${batchIndex + 1}: ${err.message}`);
-          errors.push(`Batch ${batchIndex + 1} — ${model}: ${err.message}`);
+        } catch (err: unknown) {
+          console.warn(`[EXTRACT] ${model} failed on batch ${batchIndex + 1}: ${errorText(err)}`);
+          errors.push(`Batch ${batchIndex + 1} — ${model}: ${errorText(err)}`);
         }
       }
 
@@ -575,10 +583,10 @@ export async function POST(req: Request) {
       totalDenials: unique.length,
       validationAttempts: totalValidationAttempts,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[EXTRACT FATAL]", error);
     return NextResponse.json(
-      { error: `Internal Server Error: ${error.message || "Unknown failure"}` },
+      { error: `Internal Server Error: ${errorText(error)}` },
       { status: 500 }
     );
   }
