@@ -201,7 +201,7 @@ export default async function BillingPage() {
             </li>
             <li className="flex items-start gap-3">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400 mt-0.5 shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
-              <span><strong className="text-white">Unlimited appeal letter generations</strong> — AI-powered, legally persuasive appeal letters</span>
+              <span><strong className="text-white">Unlimited appeal letter generations</strong> — drafts from the notes you paste; you review them</span>
             </li>
             <li className="flex items-start gap-3">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400 mt-0.5 shrink-0"><polyline points="20 6 9 17 4 12"/></svg>

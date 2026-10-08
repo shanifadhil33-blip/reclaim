@@ -1,138 +1,127 @@
 import type { DenialRow } from '@/stores/extraction-store'
 
+const FICTIONAL_BANNER =
+  'FICTIONAL SAMPLE. Not a real patient, not a real payer, and not a letter to send.'
+
 /**
- * Sample EOB denial claims for the public Live Demo (/demo).
+ * Made-up denial rows for the public Live Demo (/demo).
  * Fully client-side — never sent to extract/appeal APIs.
  */
 export const DEMO_CLAIMS: DenialRow[] = [
   {
     id: 'demo-claim-001',
-    patientAccount: 'PT-48291',
-    patientName: 'Maria Chen',
+    patientAccount: 'DEMO-1001',
+    patientName: 'Alex Example',
     dateOfService: '02/14/2026',
     billedCPT: '99214',
     denialCode: 'CO-50',
-    denialReason: 'These are non-covered services because this is not deemed a medical necessity by the payer.',
+    denialReason: 'Fictional denial: the sample payer said this visit was not medically necessary.',
     billedAmount: '$285.00',
     paidAmount: '$0.00',
-    payerName: 'Aetna',
+    payerName: 'Fictional Payer A',
     status: 'completed',
     clinicalNotes:
-      'Established patient return visit for poorly controlled type 2 diabetes with neuropathy. A1C 9.2%. Medication reconciliation completed; metformin increased; added duloxetine for neuropathic pain. Discussed lifestyle modifications and scheduled lab follow-up in 90 days. Time spent: 30 minutes face-to-face; moderate medical decision making with prescription management and chronic disease coordination.',
-    generatedLetter: `Re: Appeal of Denied Claim — CPT 99214
-Patient: Maria Chen | Account: PT-48291 | DOS: 02/14/2026
-Payer: Aetna | Denial: CO-50 (Medical Necessity)
+      'FICTIONAL SAMPLE. These notes are made up for the demo.\n\nAlex Example is not a real person. Placeholder visit for a made-up chronic condition. The A1C figure in older copies of this demo has been removed so it is not mistaken for a lab result. Face-to-face time and decision-making in this row are sample text only.',
+    generatedLetter: `${FICTIONAL_BANNER}
 
-To Whom It May Concern:
+Re: Sample appeal — CPT 99214
+Patient: Alex Example (fictional) | Account: DEMO-1001 | DOS: 02/14/2026
+Payer: Fictional Payer A | Denial: CO-50
 
-We are writing to formally appeal the denial of CPT 99214 performed on 02/14/2026 for the above-referenced patient. The denial cites lack of medical necessity (CO-50). The clinical record clearly supports a level-4 established outpatient E/M visit.
+To the Appeals Department,
 
-Clinical Justification:
-On the date of service, Ms. Chen presented for management of poorly controlled type 2 diabetes with neuropathy (A1C 9.2%). The visit included medication reconciliation, intensification of metformin, initiation of duloxetine for neuropathic pain, counseling on lifestyle modification, and coordination of follow-up laboratory testing. Face-to-face time was 30 minutes with moderate complexity medical decision making involving prescription drug management and chronic disease coordination.
-
-This level of care meets AMA CPT criteria for 99214 and was medically necessary to prevent acute decompensation and avoid emergency utilization. We respectfully request reconsideration and full payment of the originally billed amount of $285.00.
-
-Please contact our billing office if additional documentation is required.
+This is a made-up letter so you can see the shape of an appeal. It cites a placeholder office visit and asks the fictional payer to look again. Nothing in it comes from a chart.
 
 Sincerely,
-Reclaim Appeals Desk
-[Sample letter — Demo Mode]`,
+Sample Appeals Desk
+[Made-up letter — Demo Mode]`,
     createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
   },
   {
     id: 'demo-claim-002',
-    patientAccount: 'PT-77310',
-    patientName: 'James Okonkwo',
+    patientAccount: 'DEMO-1002',
+    patientName: 'Jordan Sample',
     dateOfService: '01/28/2026',
     billedCPT: '72148',
     denialCode: 'CO-197',
-    denialReason: 'Precertification/authorization/notification absent.',
+    denialReason: 'Fictional denial: precertification was marked absent on this sample claim.',
     billedAmount: '$1,450.00',
     paidAmount: '$0.00',
-    payerName: 'UnitedHealthcare',
+    payerName: 'Fictional Payer B',
     status: 'completed',
     clinicalNotes:
-      'MRI lumbar spine without contrast ordered for progressive bilateral lower extremity radiculopathy lasting 8 weeks, failed conservative therapy (PT x 6 weeks, NSAIDs, activity modification). Positive straight-leg raise bilaterally; diminished Achilles reflex on left. Prior auth requested 01/20/2026 — authorization #UHC-991204 confirmed verbally with payer representative; written confirmation delayed in portal.',
-    generatedLetter: `Re: Appeal of Denied Claim — CPT 72148
-Patient: James Okonkwo | Account: PT-77310 | DOS: 01/28/2026
-Payer: UnitedHealthcare | Denial: CO-197 (Authorization Absent)
+      'FICTIONAL SAMPLE. These notes are made up for the demo.\n\nJordan Sample is not a real person. Placeholder imaging visit. The sample authorization number is DEMO-AUTH-1002. There is no real payer confirmation behind it.',
+    generatedLetter: `${FICTIONAL_BANNER}
 
-To Whom It May Concern:
+Re: Sample appeal — CPT 72148
+Patient: Jordan Sample (fictional) | Account: DEMO-1002 | DOS: 01/28/2026
+Payer: Fictional Payer B | Denial: CO-197
 
-We appeal the denial of MRI lumbar spine (CPT 72148) performed on 01/28/2026. The claim was denied for missing precertification (CO-197). Authorization was obtained prior to service.
+To the Appeals Department,
 
-Supporting Facts:
-1. Clinical indication: progressive bilateral lower extremity radiculopathy for 8 weeks after failed conservative care (physical therapy, NSAIDs, activity modification), with positive straight-leg raise and reflex changes — imaging was medically indicated.
-2. Prior authorization was requested on 01/20/2026. Verbal authorization #UHC-991204 was confirmed with a UnitedHealthcare representative before the date of service. Written portal confirmation lagged behind the verbal approval but does not negate medical necessity or the prior authorization already secured.
-
-We request overturn of the CO-197 denial and payment of $1,450.00. Enclosed please find clinical notes and the authorization reference above.
+This sample says an authorization number DEMO-AUTH-1002 was already on file. That number is invented. The letter only shows how a prior-auth appeal is laid out.
 
 Sincerely,
-Reclaim Appeals Desk
-[Sample letter — Demo Mode]`,
+Sample Appeals Desk
+[Made-up letter — Demo Mode]`,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
   },
   {
     id: 'demo-claim-003',
-    patientAccount: 'PT-55002',
-    patientName: 'Elena Vasquez',
+    patientAccount: 'DEMO-1003',
+    patientName: 'Casey Placeholder',
     dateOfService: '03/03/2026',
     billedCPT: '27447',
     denialCode: 'CO-97',
-    denialReason: 'The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated.',
+    denialReason: 'Fictional denial: the sample payer bundled this procedure into another line.',
     billedAmount: '$18,200.00',
     paidAmount: '$0.00',
-    payerName: 'Blue Cross Blue Shield',
+    payerName: 'Fictional Payer C',
     status: 'needs_notes',
     clinicalNotes:
-      'Total knee arthroplasty, right (CPT 27447). Primary osteoarthritis Kellgren-Lawrence grade 4, failed NSAIDs, corticosteroid injection, and unloader bracing. Pre-op clearance obtained. Separately billed intraoperative nerve block (64447) paid; primary TKA denied as bundled. Operative report documents distinct surgical procedure with prosthetic implantation and cementing; not a duplicate of the regional anesthesia service.',
-    generatedLetter: `Re: Appeal of Denied Claim — CPT 27447
-Patient: Elena Vasquez | Account: PT-55002 | DOS: 03/03/2026
-Payer: Blue Cross Blue Shield | Denial: CO-97 (Bundled / Included in Another Service)
+      'FICTIONAL SAMPLE. These notes are made up for the demo.\n\nCasey Placeholder is not a real person. This row pretends a surgery was denied as bundled with a separate sample line. No operative report exists.',
+    generatedLetter: `${FICTIONAL_BANNER}
 
-To Whom It May Concern:
+Re: Sample appeal — CPT 27447
+Patient: Casey Placeholder (fictional) | Account: DEMO-1003 | DOS: 03/03/2026
+Payer: Fictional Payer C | Denial: CO-97
 
-We are appealing the bundling denial (CO-97) for total knee arthroplasty, CPT 27447, date of service 03/03/2026.
+To the Appeals Department,
 
-The intraoperative nerve block (CPT 64447) was appropriately paid as anesthesia/pain management. Total knee arthroplasty is a distinct major surgical procedure involving bony resection, prosthetic implantation, and cement technique. It is not included in the allowance for the regional block under standard CCI/NCCI or commercial bundling edits when both services are reported with appropriate modifiers and documentation.
-
-The operative report and clinical history establish primary osteoarthritis (Kellgren-Lawrence grade 4) after exhausted conservative therapy. We request separate reimbursement of the TKA at the contracted rate totaling $18,200.00 billed.
+This sample argues that two made-up services should be paid separately. It is layout practice only.
 
 Sincerely,
-Reclaim Appeals Desk
-[Sample letter — Demo Mode]`,
+Sample Appeals Desk
+[Made-up letter — Demo Mode]`,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
   },
   {
     id: 'demo-claim-004',
-    patientAccount: 'PT-11984',
-    patientName: 'Robert Hale',
+    patientAccount: 'DEMO-1004',
+    patientName: 'Riley Fictional',
     dateOfService: '02/22/2026',
     billedCPT: '93306',
     denialCode: 'PR-204',
-    denialReason: 'This service/equipment/drug is not covered under the patient’s current benefit plan.',
+    denialReason: 'Fictional denial: the sample plan said this test was not a covered benefit.',
     billedAmount: '$620.00',
     paidAmount: '$0.00',
-    payerName: 'Cigna',
+    payerName: 'Fictional Payer D',
     status: 'needs_notes',
     clinicalNotes:
-      'Transthoracic echocardiogram complete with Doppler and color flow (93306) ordered for new-onset dyspnea, orthopnea, and elevated BNP (842). Exam revealed reduced EF 38% with moderate MR — findings changed management (initiated GDMT, cardiology referral). Benefit exclusion cited by plan appears inconsistent with covered diagnostic imaging for suspected heart failure under the patient’s PPO rider.',
-    generatedLetter: `Re: Appeal of Denied Claim — CPT 93306
-Patient: Robert Hale | Account: PT-11984 | DOS: 02/22/2026
-Payer: Cigna | Denial: PR-204 (Not Covered Under Plan)
+      'FICTIONAL SAMPLE. These notes are made up for the demo.\n\nRiley Fictional is not a real person. Placeholder imaging row. Any measurement that used to look like a real BNP or ejection fraction has been removed.',
+    generatedLetter: `${FICTIONAL_BANNER}
 
-To Whom It May Concern:
+Re: Sample appeal — CPT 93306
+Patient: Riley Fictional (fictional) | Account: DEMO-1004 | DOS: 02/22/2026
+Payer: Fictional Payer D | Denial: PR-204
 
-We appeal the non-covered determination (PR-204) for complete transthoracic echocardiogram CPT 93306 performed on 02/22/2026.
+To the Appeals Department,
 
-Indication and Medical Necessity:
-Mr. Hale presented with new-onset dyspnea, orthopnea, and BNP 842. Echo demonstrated reduced ejection fraction (38%) with moderate mitral regurgitation. Results directly altered clinical management, including initiation of guideline-directed medical therapy and urgent cardiology referral.
-
-Diagnostic echocardiography for suspected heart failure is a standard covered benefit under most PPO riders when medical necessity criteria are met. We ask that the PR-204 decision be reversed and the claim of $620.00 be processed under the outpatient diagnostic imaging benefit.
+This sample asks a made-up plan to treat a made-up test as covered. Do not send it anywhere.
 
 Sincerely,
-Reclaim Appeals Desk
-[Sample letter — Demo Mode]`,
+Sample Appeals Desk
+[Made-up letter — Demo Mode]`,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 50).toISOString(),
   },
 ]

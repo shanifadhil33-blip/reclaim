@@ -33,7 +33,7 @@ export default async function TrashPage() {
             Back to Dashboard
           </Link>
           <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-2">Recycle Bin</h1>
-          <p className="text-neutral-400">Items here will be permanently deleted after 30 days.</p>
+          <p className="text-neutral-400">Deleted letters stay here until you restore them or permanently delete them. Nothing is removed on a timer.</p>
         </div>
       </div>
       

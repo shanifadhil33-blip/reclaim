@@ -101,7 +101,9 @@ async function sendChunkToAPI(
   }
 
   const data = await res.json();
-  console.log(`[CHUNK] ${chunkLabel} response:`, JSON.stringify(data, null, 2));
+  console.log(
+    `[CHUNK] ${chunkLabel} response: status ${res.status}, claims ${Array.isArray(data?.claims) ? data.claims.length : 0}`
+  );
 
   if (!res.ok) {
     // 402 = trial expired — must abort entire pipeline, not just this chunk
@@ -114,7 +116,7 @@ async function sendChunkToAPI(
   }
 
   if (data.warnings?.length) {
-    console.warn(`[CHUNK] ${chunkLabel} warnings:`, data.warnings);
+    console.warn(`[CHUNK] ${chunkLabel} warnings: ${data.warnings.length}`);
   }
 
   const validationAttempts = data.validationAttempts || 1;

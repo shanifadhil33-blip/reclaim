@@ -93,17 +93,17 @@ export default function LiveDemoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50 font-sans selection:bg-indigo-500/30">
+    <div className="min-h-screen overflow-x-clip bg-neutral-950 text-neutral-50 font-sans selection:bg-indigo-500/30">
       {/* Demo banner */}
       <div className="sticky top-0 z-50 border-b border-amber-500/20 bg-amber-500/10 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5 sm:px-6">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p className="text-sm font-medium text-amber-200/90">
-            ⚡ Demo Mode — Viewing sample EOB data
+            Portfolio project. Use fictional data only. Not for real patient information.
           </p>
           <div className="flex items-center gap-2 shrink-0">
             <Link
               href="/"
-              className="hidden sm:inline text-xs text-neutral-400 hover:text-white transition-colors"
+              className="inline-flex h-11 items-center text-xs text-neutral-400 hover:text-white transition-colors"
             >
               Back to home
             </Link>
@@ -121,15 +121,15 @@ export default function LiveDemoPage() {
         </div>
       </div>
 
-      <div className="relative mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 animate-in fade-in slide-in-from-bottom-4 duration-200 pb-16">
-        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="relative mx-auto w-full max-w-7xl overflow-hidden px-4 py-8 sm:px-6 animate-in fade-in slide-in-from-bottom-4 duration-200 pb-16">
+        <div className="absolute top-0 left-0 h-[500px] w-full max-w-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
 
         <div className="relative z-10 mb-8">
           <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-2">
             EOB Denial Triage
           </h1>
           <p className="text-neutral-400">
-            Explore sample denials — click any row to review clinical notes and a pre-written appeal.
+            Four made-up denials. Names, payers, and letters are fictional. Click one to read the sample.
           </p>
         </div>
 
@@ -184,7 +184,7 @@ export default function LiveDemoPage() {
 
         {/* Triage table */}
         <Card className="relative z-10 shadow-lg border-white/10 bg-neutral-900/40 backdrop-blur-2xl text-white overflow-hidden gap-0 p-0">
-          <CardHeader className="border-b border-white/10 p-4 flex flex-row items-center justify-between bg-[#141414]">
+          <CardHeader className="border-b border-white/10 p-4 flex flex-row flex-wrap items-center justify-between gap-3 bg-[#141414]">
             <div>
               <CardTitle className="text-xl tracking-tight">
                 Denied Claims ({rows.length})
@@ -197,7 +197,39 @@ export default function LiveDemoPage() {
               Sample data
             </Badge>
           </CardHeader>
-          <div className="overflow-y-auto overflow-x-auto max-h-[calc(100vh-280px)]">
+          <ul className="md:hidden divide-y divide-white/10">
+            {rows.map((row) => (
+              <li key={row.id}>
+                <button
+                  type="button"
+                  onClick={() => openModal(row)}
+                  className="w-full px-4 py-4 text-left hover:bg-white/5 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-medium text-neutral-100">{row.patientName}</div>
+                      <div className="text-xs text-neutral-500">{row.patientAccount}</div>
+                    </div>
+                    {row.status === "completed" ? (
+                      <Badge className="shrink-0 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/20">
+                        Completed
+                      </Badge>
+                    ) : (
+                      <Badge className="shrink-0 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border-amber-500/20">
+                        Needs Notes
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="mt-2 text-sm text-neutral-300">
+                    {row.dateOfService} · {row.billedCPT} · {row.payerName}
+                  </div>
+                  <div className="mt-1 text-xs font-mono text-red-400">{row.denialCode}</div>
+                  <div className="mt-1 text-xs text-neutral-500">{row.denialReason}</div>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden md:block overflow-x-auto max-h-[calc(100vh-280px)]">
             <Table>
               <TableHeader className="bg-[#0f172a] sticky top-0 z-10">
                 <TableRow className="border-white/5 hover:bg-transparent">
@@ -263,7 +295,7 @@ export default function LiveDemoPage() {
                 {showSampleLetter ? "Sample Appeal Letter" : "Clinical Notes"}
               </DialogTitle>
               <DialogDescription className="text-neutral-400">
-                Demo Mode — sample content only. Sign in to generate appeals from your EOBs.
+                Made-up sample. Not a real patient. Sign in only if you want to try the uploader with fictional files.
               </DialogDescription>
             </DialogHeader>
 

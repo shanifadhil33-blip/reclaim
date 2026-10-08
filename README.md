@@ -1,6 +1,6 @@
 # Reclaim — Solo Biller Utility
 
-A single-purpose automation tool for freelance medical billers. Drop an EOB PDF, extract denied claims via Vision AI, and generate compliant appeal letters in seconds.
+A portfolio project for drafting insurance appeal letters. Drop an EOB PDF, extract denied claims via Vision AI, and draft an appeal from the notes you paste. Not a HIPAA product. Not for real patient information.
 
 ## Stack
 

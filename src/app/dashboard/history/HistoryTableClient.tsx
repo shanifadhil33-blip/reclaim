@@ -128,7 +128,7 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
       <div className="shadow-lg border border-white/10 bg-white/5 backdrop-blur-2xl text-white rounded-2xl p-12 text-center">
          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-4 opacity-50"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
         <h2 className="text-xl font-medium text-neutral-300">No Appeals Found</h2>
-        <p className="text-neutral-500 mt-2">No appeals generated yet. When you generate appeals, they will be securely stored here so you can batch-download them later.</p>
+        <p className="text-neutral-500 mt-2">No appeals generated yet. Letters you generate are saved to your account so you can download them later.</p>
       </div>
     );
   }

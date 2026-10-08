@@ -8,52 +8,43 @@ export default function PrivacyPage() {
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
           Back to Home
         </Link>
-        <h1 className="text-4xl font-bold tracking-tight">Privacy Policy & Terms of Use</h1>
-        <p className="text-neutral-500 font-medium">Last updated: May 2026</p>
+        <h1 className="text-4xl font-bold tracking-tight">Privacy note</h1>
+        <p className="text-neutral-500 font-medium">Updated October 2026</p>
 
-        <div className="prose prose-invert prose-neutral max-w-none text-neutral-300 space-y-6">
-          
-          <h2 className="text-2xl font-semibold text-white pt-6">1. What We Collect</h2>
-          <p className="leading-relaxed">
-            <strong className="text-white">Account Data:</strong> When you sign up, we collect your email address and a hashed password. We do not collect your name, phone number, or physical address unless you voluntarily provide it in your Practice Defaults settings.
-          </p>
-          <p className="leading-relaxed">
-            <strong className="text-white">Usage Data:</strong> We log basic analytics (page views, feature usage counts) to improve the product. We do not track you across other websites.
+        <div className="text-neutral-300 space-y-6 leading-relaxed">
+          <p>
+            Reclaim is a portfolio project by Adhil Shanif. It is not a medical product and not for real patient information.
           </p>
 
-          <h2 className="text-2xl font-semibold text-white pt-6">2. How We Handle Your EOB Data</h2>
-          <p className="leading-relaxed">
-            Your EOB PDF is rendered locally in your browser. The raw file is never uploaded to our servers. Rendered page images are sent to AI providers for denial extraction. We do not store the raw images after processing. Only the structured extraction results (patient account numbers, denial codes, dates) are kept in your session memory until you close the browser.
+          <h2 className="text-2xl font-semibold text-white pt-2">Account</h2>
+          <p>
+            Sign-in is Google only, through Supabase. The app stores the email address and name Google sends with that sign-in. There is no password.
           </p>
 
-          <h2 className="text-2xl font-semibold text-white pt-6">3. What We Store</h2>
-          <p className="leading-relaxed">
-            When you generate an appeal letter, the following are saved to your encrypted database record: the insurance company name, date of service, procedure code, denial code, your pasted clinical notes, the patient account number, and the generated letter text. These records are accessible only to you via Row Level Security.
+          <h2 className="text-2xl font-semibold text-white pt-2">What happens to a file</h2>
+          <p>
+            An uploaded PDF is rendered in the browser. Page images, and sometimes text taken from those pages, are sent to this app&apos;s server and then to OpenRouter. The models in the code include Google Gemini and free Llama, Gemma, and Mistral routes. The requests do not set a zero-retention or no-training option. Do not send real patient information.
+          </p>
+          <p>
+            Denied-claim rows are saved in this browser&apos;s localStorage. They stay after you close the tab. Signing out clears them. A different Google account on the same browser does not see the previous account&apos;s rows.
+          </p>
+          <p>
+            If you generate a letter, the app saves the payer, date of service, codes, denial text, the notes you pasted, the patient account value, and the letter in a Supabase database. Row Level Security limits those rows to your account. The database owner can still read them with the project admin key. The host encrypts disks at rest. That is not end-to-end encryption.
           </p>
 
-          <h2 className="text-2xl font-semibold text-white pt-6">4. Third-Party AI Processing</h2>
-          <p className="leading-relaxed">
-            We use OpenRouter to route AI requests to models from Google (Gemini), Meta (Llama), and other providers. We select providers that offer zero-retention policies for API data. Your clinical data is not used to train any AI model.
+          <h2 className="text-2xl font-semibold text-white pt-2">Other data</h2>
+          <p>
+            A device fingerprint is stored so a second free account on the same browser can be blocked. Payments, if you subscribe, are handled by Polar. This app does not store card numbers. Feedback you submit is saved and may be emailed to the project owner. Error reports can be sent to Sentry. Session Replay is off.
           </p>
 
-          <h2 className="text-2xl font-semibold text-white pt-6">5. Payment Processing</h2>
-          <p className="leading-relaxed">
-            Payments are handled by Polar.sh. We never see or store your credit card number. Polar processes payments in compliance with PCI DSS standards and sends us only your subscription status.
+          <h2 className="text-2xl font-semibold text-white pt-2">Deleting data</h2>
+          <p>
+            You can delete appeal records from Appeal History. There is no button that deletes the whole account. Email <a href="mailto:shanifadhil33@gmail.com" className="text-indigo-400 hover:text-indigo-300 transition-colors">shanifadhil33@gmail.com</a> and ask for the account to be removed.
           </p>
 
-          <h2 className="text-2xl font-semibold text-white pt-6">6. Data Deletion</h2>
-          <p className="leading-relaxed">
-            You can delete individual appeal records or your entire history from the Appeal History page. If you wish to delete your entire account and all associated data, contact us at <a href="mailto:support@reclaimapp.com" className="text-indigo-400 hover:text-indigo-300 transition-colors">support@reclaimapp.com</a>.
-          </p>
-
-          <h2 className="text-2xl font-semibold text-white pt-6">7. Terms of Use</h2>
-          <p className="leading-relaxed">
-            By using Reclaim, you agree that: (a) the generated appeal letters are AI-assisted drafts and should be reviewed before submission; (b) Reclaim is not a law firm and does not provide legal advice; (c) you are responsible for verifying the accuracy of all generated content; (d) you will not use the service for any purpose other than legitimate medical billing appeals.
-          </p>
-
-          <h2 className="text-2xl font-semibold text-white pt-6">8. Contact</h2>
-          <p className="leading-relaxed">
-            For privacy questions, data deletion requests, or BAA inquiries: <a href="mailto:support@reclaimapp.com" className="text-indigo-400 hover:text-indigo-300 transition-colors">support@reclaimapp.com</a>
+          <h2 className="text-2xl font-semibold text-white pt-2">Letters are drafts</h2>
+          <p>
+            Generated letters come from a language model. Read them before you use them. This is not legal, medical, or billing advice.
           </p>
         </div>
       </div>

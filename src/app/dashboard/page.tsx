@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { useExtractionStore, type DenialRow } from "@/stores/extraction-store";
 import { createClient } from "@/lib/supabase/client";
+import { adoptLocalClaimData } from "@/lib/local-claim-data";
 
 type ClaimStatus = "needs_notes" | "completed";
 
@@ -78,8 +79,24 @@ export default function ReclaimDashboard() {
   const router = useRouter();
   const trialActiveRef = useRef<boolean | null>(null); // null = not yet checked
 
-  // Load worklist from localStorage once
-  useEffect(() => { loadFromStorage(); }, [loadFromStorage]);
+  // Stamp local denial rows with this account before reading them.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (cancelled) return;
+        if (user) adoptLocalClaimData(user.id);
+      } catch {
+        // Still show whatever is already in this browser.
+      }
+      if (!cancelled) loadFromStorage();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadFromStorage]);
 
   // Check trial status on mount
   useEffect(() => {
@@ -544,7 +561,7 @@ export default function ReclaimDashboard() {
           <DialogHeader>
             <DialogTitle className="text-2xl font-semibold tracking-tight mb-2">{selectedRow?.status === "completed" ? "Review Appeal" : "Generate Appeal"}</DialogTitle>
             <DialogDescription className="text-neutral-400">
-              {selectedRow?.status === "completed" ? "This letter has already been generated." : "Paste the doctor's EMR clinical notes below to instantly generate a legally persuasive appeal."}
+              {selectedRow?.status === "completed" ? "This letter has already been generated." : "Paste notes below to draft an appeal. Read the letter before you use it."}
             </DialogDescription>
           </DialogHeader>
 

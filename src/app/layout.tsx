@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Reclaim AI",
-  description: "Upload EOB PDFs, extract denied claims with AI vision, and generate appeal letters instantly. Built for US dental practices.",
+  description: "Portfolio project that drafts insurance appeal letters from explanation-of-benefits files. Not for real patient information.",
 };
 
 export default function RootLayout({

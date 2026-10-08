@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
+import { PortfolioNotice } from '@/components/portfolio-notice';
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50 flex flex-col font-sans selection:bg-indigo-500/30 overflow-x-hidden">
+    <div className="relative min-h-screen bg-neutral-950 text-neutral-50 flex flex-col font-sans selection:bg-indigo-500/30 overflow-x-hidden">
       <header className="absolute top-0 w-full p-6 flex justify-between items-center z-50">
         <div className="text-2xl font-semibold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-neutral-100 to-neutral-400">
           Reclaim
@@ -23,12 +24,13 @@ export default function LandingPage() {
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-600/10 rounded-full blur-[100px] pointer-events-none" />
 
         <div className="max-w-4xl relative z-10 space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+          <PortfolioNotice className="rounded-2xl" />
           <h1 className="text-5xl md:text-7xl font-semibold tracking-tight text-balance leading-tight">
             Drop your EOB. <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400 pb-2">Get appeal letters.</span>
           </h1>
           
           <p className="text-lg md:text-xl text-neutral-400 max-w-2xl mx-auto text-balance font-medium leading-relaxed">
-            Upload any Explanation of Benefits PDF. Reclaim reads every page, ignores the paid claims, extracts only the denials, and generates compliant appeal letters in seconds.
+            Upload an Explanation of Benefits PDF. Reclaim tries to find the denied lines and draft an appeal letter from the notes you paste. You still read the letter before anyone sends it.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-4 justify-center pt-8">
@@ -76,7 +78,7 @@ export default function LandingPage() {
               <h3 className="text-xl font-semibold text-white mb-4 mt-2">Generate & Send</h3>
               <div className="space-y-4 text-sm">
                 <p className="text-neutral-300"><strong className="text-purple-400">What you do:</strong> Click "Generate" — copy, download, or paste the finished appeal directly into the payer portal.</p>
-                <p className="text-neutral-400"><strong className="text-neutral-500">What we do:</strong> We synthesize a HIPAA-compliant, legally persuasive appeal letter formatted to overturn the denial.</p>
+                <p className="text-neutral-400"><strong className="text-neutral-500">What we do:</strong> We draft an appeal letter from the denial and the notes you pasted. It is a starting point, not a legal filing.</p>
               </div>
             </div>
           </div>
@@ -86,10 +88,10 @@ export default function LandingPage() {
             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] pointer-events-none" />
             <h3 className="text-2xl font-semibold text-white mb-4 relative z-10">You shouldn't have to write off revenue because you ran out of hours.</h3>
             <p className="text-neutral-300 leading-relaxed text-lg mb-6 relative z-10">
-              A single appeal letter takes 30 to 45 minutes to draft manually. At volume, it's physically impossible to fight every denial — so money gets left on the table.
+              Writing appeals by hand takes long enough that a lot of denials never get a letter.
             </p>
             <p className="text-emerald-400 font-medium text-lg relative z-10">
-              Reclaim turns a 30-minute drafting task into a 15-second copy-paste. Fight every single denial. Recover every dollar.
+              Reclaim drafts a starting letter from the denial and the notes you paste. You decide what, if anything, gets sent.
             </p>
           </div>
           
@@ -107,10 +109,10 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-4 text-center relative z-20">
           <div className="inline-flex items-center justify-center gap-2 mb-6">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500 drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]"><path d="m12 22-7-3.5v-6c0-4.4 3.6-8 8-8s8 3.6 8 8v6z"/><path d="m9 12 2 2 4-4"/></svg>
-            <h2 className="text-xl font-semibold text-neutral-200">HIPAA Compliant</h2>
+            <h2 className="text-xl font-semibold text-neutral-200">How files are handled</h2>
           </div>
           <p className="text-sm text-neutral-400 max-w-3xl mx-auto mb-8 leading-relaxed">
-            Your EOB data is rendered locally in your browser. Only the page images are sent to the AI for extraction. No raw patient data is stored on our servers beyond your encrypted appeal history.
+            The PDF is rendered in your browser. Page images are sent to an AI provider for extraction. Denied rows stay in this browser until you delete them. A generated letter is saved to the database. This is not end-to-end encryption, and it is not a HIPAA product. Use fictional data only.
           </p>
         </div>
       </div>
@@ -118,7 +120,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-white/5 py-8 relative z-10 text-center text-sm text-neutral-500">
         <div className="flex justify-center gap-6 mb-4">
-          <Link href="/hipaa" className="hover:text-neutral-300 transition-colors">HIPAA Compliance</Link>
+          <Link href="/hipaa" className="hover:text-neutral-300 transition-colors">Data note</Link>
           <Link href="/privacy" className="hover:text-neutral-300 transition-colors">Privacy Policy</Link>
           <Link href="/contact" className="hover:text-neutral-300 transition-colors">Contact</Link>
         </div>

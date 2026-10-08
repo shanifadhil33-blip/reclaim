@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { clearLocalClaimData } from "@/lib/local-claim-data";
 
 export default function SettingsPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -183,17 +184,17 @@ export default function SettingsPage() {
              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400"><path d="m12 22-7-3.5v-6c0-4.4 3.6-8 8-8s8 3.6 8 8v6z"/><path d="m9 12 2 2 4-4"/></svg>
              Security
            </h2>
-           <p className="text-sm text-neutral-400 mb-4">Your account is secured by Google OAuth 2.0 — no passwords are stored on our servers.</p>
+           <p className="text-sm text-neutral-400 mb-4">You sign in with Google. This app does not store a password for you.</p>
            <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-lg p-4 text-sm text-emerald-300/80 space-y-1">
-             <p>✓ Two-factor authentication managed by Google</p>
-             <p>✓ Session encryption via Supabase Auth</p>
-             <p>✓ No passwords stored or transmitted</p>
+             <p>Sign-in is Google only. Extra sign-in checks, if any, are the ones on that Google account.</p>
+             <p>The session is a normal Supabase cookie. It is not end-to-end encrypted.</p>
+             <p>No password is stored here.</p>
            </div>
         </div>
 
         {/* Logout */}
         <div className="border-t border-white/10 pt-8 mt-8">
-           <p className="text-sm text-neutral-400 mb-6">Terminate your active encrypted session.</p>
+           <p className="text-sm text-neutral-400 mb-6">Sign out of this browser. Denial rows saved only on this device are cleared.</p>
            <Button 
              type="button" 
              onClick={() => setShowLogoutDialog(true)} 
@@ -257,7 +258,13 @@ export default function SettingsPage() {
               >
                 Cancel
               </button>
-              <form action="/auth/signout" method="post">
+              <form
+                action="/auth/signout"
+                method="post"
+                onSubmit={() => {
+                  clearLocalClaimData();
+                }}
+              >
                 <button
                   type="submit"
                   className="h-10 px-4 text-sm font-medium rounded-lg bg-red-600 hover:bg-red-500 text-white transition-all"

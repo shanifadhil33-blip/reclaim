@@ -71,7 +71,8 @@ Please write the appeal letter based on these details.
     if (response.status === 429) {
       throw new Error("AI generation network is currently at capacity. Please try again in a few seconds.");
     }
-    throw new Error(`AI model ${model} returned HTTP ${response.status}. ${errorBody}`);
+    console.error(`[GENERATE] ${model} HTTP ${response.status}, body length ${errorBody.length}`);
+    throw new Error(`AI model ${model} returned HTTP ${response.status}.`);
   }
 
   const completion = await response.json();
@@ -122,9 +123,9 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { insuranceCompany, dateOfService, billedCode, denialReason, clinicalNotes, patientAccount } = body;
 
-    console.log("[GENERATE] Payload:", {
-      insuranceCompany, dateOfService, billedCode, denialReason,
-      clinicalNotesLength: clinicalNotes?.length || 0,
+    console.log("[GENERATE] Request lengths:", {
+      notes: typeof clinicalNotes === "string" ? clinicalNotes.length : 0,
+      denial: typeof denialReason === "string" ? denialReason.length : 0,
     });
 
     const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
@@ -141,7 +142,7 @@ export async function POST(req: Request) {
         console.log(`[GENERATE] Success with ${model} (${generatedLetter.length} chars)`);
         break;
       } catch (err: any) {
-        console.warn(`[GENERATE] ${model} failed: ${err.message}`);
+        console.warn(`[GENERATE] ${model} failed`);
         errors.push(err.message);
       }
     }
