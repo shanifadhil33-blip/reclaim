@@ -52,11 +52,18 @@ export default function EditableLetter({
           <button 
             type="button"
             onClick={() => {
-              navigator.clipboard.writeText(letterContent);
-              toast.success("Copied to clipboard!");
+              void (async () => {
+                try {
+                  if (!navigator.clipboard?.writeText) throw new Error("Clipboard is not available");
+                  await navigator.clipboard.writeText(letterContent);
+                  toast.success("Copied");
+                } catch {
+                  toast.error("Couldn't copy the letter. Select the text and copy it manually.");
+                }
+              })();
             }}
             className="bg-white/10 hover:bg-white/20 text-white rounded p-1.5 transition-colors border border-white/5"
-            aria-label="Copy to clipboard"
+            aria-label="Copy Text"
             title="Copy Text"
           >
              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
@@ -77,7 +84,7 @@ export default function EditableLetter({
                 const doc = new Document({
                   sections: [{
                     properties: {},
-                    children: lines.map((line, i) =>
+                    children: lines.map((line) =>
                       new Paragraph({
                         children: [new TextRun({ text: line, size: 24, font: "Calibri" })],
                         spacing: { after: 120 },
