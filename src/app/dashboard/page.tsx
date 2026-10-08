@@ -76,6 +76,7 @@ export default function ReclaimDashboard() {
   const [editPayerName, setEditPayerName] = useState("");
   const [isDataVerified, setIsDataVerified] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   // Stamp local denial rows with this account before reading them.
   useEffect(() => {
@@ -126,8 +127,9 @@ export default function ReclaimDashboard() {
     setEditPaidAmount(row.paidAmount || "");
     setEditPayerName(row.payerName || "");
     setIsDataVerified(false); // Reset verification on each open
+    setCopyState("idle");
   };
-  const closeModal = () => { setSelectedRowId(null); setClinicalNotes(""); setIsDataVerified(false); };
+  const closeModal = () => { setSelectedRowId(null); setClinicalNotes(""); setIsDataVerified(false); setCopyState("idle"); };
   const selectedIndex = rows.findIndex(r => r.id === selectedRowId);
   const hasNext = selectedIndex !== -1 && selectedIndex < rows.length - 1;
   const hasPrev = selectedIndex > 0;
@@ -175,9 +177,19 @@ export default function ReclaimDashboard() {
           insuranceCompany: editPayerName,
           dateOfService: editDateOfService,
           billedCode: editBilledCPT,
-          denialReason: `${editDenialCode} — ${editDenialReason}`,
+          denialCode: editDenialCode,
+          denialReason: editDenialReason,
           clinicalNotes,
+          patientName: editPatientName,
+          memberId: editPatientAccount,
           patientAccount: editPatientAccount,
+          billedAmount: editBilledAmount,
+          paidAmount: editPaidAmount,
+          letterDate: new Date().toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          }),
         }),
       });
       const data = await res.json();
@@ -409,8 +421,14 @@ export default function ReclaimDashboard() {
                   />
                 ) : null}
                 <button type="button" onClick={() => openModal(row)} className="min-w-0 flex-1 text-left">
-                  <span className="block font-medium text-white">{row.patientName}</span>
-                  <span className="mt-1 block text-sm text-neutral-400">{row.dateOfService} · {row.billedCPT} · {row.payerName}</span>
+                  <span className="flex items-start justify-between gap-2">
+                    <span className="block font-medium text-white">{row.patientName}</span>
+                    {row.status === "completed"
+                      ? <Badge className="shrink-0 bg-emerald-500/10 text-emerald-400 border-emerald-500/20">Completed</Badge>
+                      : <Badge className="shrink-0 bg-amber-500/10 text-amber-400 border-amber-500/20">Needs Notes</Badge>
+                    }
+                  </span>
+                  <span className="mt-1 block text-sm text-neutral-400">{row.dateOfService} · {row.billedCPT} · {row.billedAmount || "—"} · {row.payerName}</span>
                   <span className="mt-1 block font-mono text-xs text-red-300">{row.denialCode}</span>
                 </button>
               </div>
@@ -440,6 +458,7 @@ export default function ReclaimDashboard() {
                 <TableHead className="text-neutral-400 font-semibold h-11 bg-[#0f172a]">Patient</TableHead>
                 <TableHead className="text-neutral-400 font-semibold h-11 bg-[#0f172a]">DOS</TableHead>
                 <TableHead className="text-neutral-400 font-semibold h-11 bg-[#0f172a]">Code</TableHead>
+                <TableHead className="text-neutral-400 font-semibold h-11 bg-[#0f172a]">Amount</TableHead>
                 <TableHead className="text-neutral-400 font-semibold h-11 bg-[#0f172a]">Denial</TableHead>
                 <TableHead className="text-neutral-400 font-semibold h-11 bg-[#0f172a]">Payer</TableHead>
                 <TableHead className="text-neutral-400 font-semibold h-11 bg-[#0f172a]">Found</TableHead>
@@ -450,7 +469,7 @@ export default function ReclaimDashboard() {
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow className="border-0 hover:bg-transparent">
-                  <TableCell colSpan={isSelectionMode ? 9 : 7} className="text-center py-16 text-neutral-500">No claims loaded. Upload an EOB PDF to begin.</TableCell>
+                  <TableCell colSpan={isSelectionMode ? 10 : 8} className="text-center py-16 text-neutral-500">No claims loaded. Upload an EOB PDF to begin.</TableCell>
                 </TableRow>
               ) : (
                 rows.map((row) => (
@@ -482,6 +501,7 @@ export default function ReclaimDashboard() {
                     </TableCell>
                     <TableCell className="text-neutral-300">{row.dateOfService}</TableCell>
                     <TableCell className="text-neutral-300"><span className="bg-neutral-800 px-2 py-1 rounded text-xs font-mono border border-white/5">{row.billedCPT}</span></TableCell>
+                    <TableCell className="text-neutral-200 font-mono whitespace-nowrap">{row.billedAmount || "—"}</TableCell>
                     <TableCell className="text-neutral-300 max-w-[200px]">
                       <span className="text-red-400 font-mono text-xs">{row.denialCode}</span>
                       {row.denialReason !== "Unknown" && <div className="text-xs text-neutral-500 truncate" title={row.denialReason}>{row.denialReason}</div>}
@@ -660,7 +680,23 @@ export default function ReclaimDashboard() {
                   <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-4 max-h-[300px] overflow-y-auto text-sm text-neutral-300 whitespace-pre-wrap custom-scrollbar">{selectedRow.generatedLetter}</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                     <div className="flex flex-col gap-2 p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm">
-                      <Button type="button" onClick={() => { navigator.clipboard.writeText(selectedRow.generatedLetter || ""); toast.success("Copied!"); }} className="bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground border border-border transition-all w-full">Copy Text</Button>
+                      <Button type="button" onClick={() => {
+                        const letter = selectedRow.generatedLetter || "";
+                        void (async () => {
+                          try {
+                            if (!navigator.clipboard?.writeText) throw new Error("Clipboard is not available");
+                            await navigator.clipboard.writeText(letter);
+                            setCopyState("copied");
+                            toast.success("Copied");
+                          } catch {
+                            setCopyState("failed");
+                            toast.error("Couldn't copy the letter. Select the text and copy it manually.");
+                          }
+                          window.setTimeout(() => setCopyState("idle"), 2000);
+                        })();
+                      }} className="bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground border border-border transition-all w-full">
+                        {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy Text"}
+                      </Button>
                       <p className="text-xs text-neutral-500 text-center">For pasting into payer portals or EMR.</p>
                     </div>
                     <div className="flex flex-col gap-2 p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm">

@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { applyLetterFacts, composeAppealLetter, resolveLetterDate } from "../src/lib/appeal-letter.ts";
+import { decideAuthRedirect } from "../src/lib/auth-redirect.ts";
 import { DEMO_CLAIMS, sortDemoClaims } from "../src/lib/demo-data.ts";
 import { parseEobText, parseModelClaims, plainExtractWarning } from "../src/lib/extract-claims.ts";
 
@@ -138,5 +140,74 @@ const newest = sortDemoClaims(DEMO_CLAIMS, "found").map((row) => row.dateOfServi
 assert.deepEqual(newest, ["03/03/2026", "02/22/2026", "02/14/2026", "01/28/2026"]);
 const byAmount = sortDemoClaims(DEMO_CLAIMS, "amount").map((row) => row.patientName);
 assert.deepEqual(byAmount, ["Casey Placeholder", "Jordan Sample", "Riley Fictional", "Alex Example"]);
+
+const today = new Date("2026-10-08T18:00:00Z");
+assert.equal(resolveLetterDate("September 15, 2026", today), "October 8, 2026");
+assert.equal(resolveLetterDate("October 8, 2026", today), "October 8, 2026");
+
+const modelLetter = `September 15, 2026
+
+HARBORLIGHT HEALTH PLAN
+Appeals Department
+[Insurance Address]
+
+Re: Claim Denial - Patient ZZ4410087
+Billed Code: 93000 (ECG)
+Date of Service: 09/02/2026
+Patient Account: ZZ4410087
+Denial Reason: CO-50 — Not Medically Necessary
+
+To the Appeals Department,
+`;
+const fixed = applyLetterFacts(modelLetter, {
+  letterDate: "October 8, 2026",
+  patientName: "Orin Hollowell",
+  memberId: "ZZ4410087",
+});
+assert.match(fixed, /^October 8, 2026/);
+assert.doesNotMatch(fixed, /September 15/);
+assert.match(fixed, /Patient Orin Hollowell/);
+assert.match(fixed, /Patient Account: ZZ4410087/);
+assert.match(fixed, /\[Payer address\]/);
+assert.doesNotMatch(fixed, /\[Insurance Address\]/);
+
+const composed = composeAppealLetter({
+  letterDate: "October 8, 2026",
+  payerName: "HARBORLIGHT HEALTH PLAN",
+  patientName: "Orin Hollowell",
+  memberId: "ZZ4410087",
+  dateOfService: "09/02/2026",
+  billedCode: "93000",
+  denialCode: "CO-50",
+  denialReason: "not medically necessary",
+  billedAmount: "$95.00",
+  paidAmount: "$0.00",
+  clinicalNotes: "Chest pain.",
+});
+assert.match(composed, /Patient name: Orin Hollowell/);
+assert.match(composed, /Member ID: ZZ4410087/);
+assert.match(composed, /Chest pain\./);
+assert.doesNotMatch(composed, /acute/i);
+
+function follow(start: string, hasUser: boolean) {
+  let path = start;
+  let stayHome = false;
+  const seen = [path];
+  for (let step = 0; step < 6; step += 1) {
+    const decision = decideAuthRedirect({ pathname: path, hasUser, stayHome });
+    if (decision.action === "next") return seen;
+    stayHome = decision.stayHome;
+    path = decision.pathname;
+    seen.push(path);
+  }
+  throw new Error(`redirect loop: ${seen.join(" -> ")}`);
+}
+
+assert.deepEqual(follow("/login", false), ["/login"]);
+assert.deepEqual(follow("/billing", false), ["/billing", "/"]);
+assert.deepEqual(follow("/billing", true), ["/billing", "/"]);
+assert.deepEqual(follow("/dashboard", false), ["/dashboard", "/login"]);
+assert.deepEqual(follow("/login", true), ["/login", "/dashboard"]);
+assert.equal(decideAuthRedirect({ pathname: "/dashboard", hasUser: true, stayHome: false }).action, "next");
 
 console.log("parse-sample-eob: ok");

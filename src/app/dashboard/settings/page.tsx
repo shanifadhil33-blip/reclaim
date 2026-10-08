@@ -11,7 +11,7 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/auth/expired");
   }
 
   const metadata = user.user_metadata;

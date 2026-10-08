@@ -1,10 +1,21 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { decideAuthRedirect } from '@/lib/auth-redirect'
 
-function copyCookies(from: NextResponse, to: NextResponse) {
-  from.cookies.getAll().forEach(({ name, value }) => {
-    to.cookies.set(name, value)
-  })
+const STAY_HOME = 'reclaim_stay_home'
+
+function copySetCookies(from: NextResponse, to: NextResponse) {
+  for (const header of from.headers.getSetCookie()) {
+    to.headers.append('set-cookie', header)
+  }
+}
+
+function clearAuthCookies(response: NextResponse, request: NextRequest) {
+  for (const { name } of request.cookies.getAll()) {
+    if (name.startsWith('sb-')) {
+      response.cookies.set(name, '', { path: '/', maxAge: 0 })
+    }
+  }
 }
 
 export async function updateSession(request: NextRequest) {
@@ -36,56 +47,51 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // Do not run code between createServerClient and getClaims().
-  // A simple mistake can make users appear randomly logged out.
-  const { data } = await supabase.auth.getClaims()
-  const user = data?.claims
+  // Signed in only after the Auth server accepts the session.
+  // A leftover sb-* cookie is not enough.
+  let hasUser = false
+  try {
+    const { data, error } = await supabase.auth.getUser()
+    hasUser = Boolean(data.user) && !error
+  } catch {
+    hasUser = false
+  }
+
+  const hadAuthCookie = request.cookies.getAll().some((cookie) => cookie.name.startsWith('sb-'))
+  const clearInvalid = !hasUser && hadAuthCookie
+  if (clearInvalid) {
+    clearAuthCookies(supabaseResponse, request)
+  }
 
   const pathname = request.nextUrl.pathname
-  if (
-    pathname === '/billing' ||
-    pathname === '/pricing' ||
-    pathname === '/subscribe' ||
-    pathname === '/dashboard/billing'
-  ) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/'
-    url.search = ''
-    const redirectResponse = NextResponse.redirect(url)
-    copyCookies(supabaseResponse, redirectResponse)
-    return redirectResponse
-  }
-  // Public marketing/auth surfaces — never gate these behind login.
-  // /demo is intentionally open so prospects can try the UI without an account.
-  const isPublicRoute =
-    pathname === '/' ||
-    pathname.startsWith('/demo') ||
-    pathname.startsWith('/login') ||
-    pathname.startsWith('/auth') ||
-    pathname.startsWith('/hipaa') ||
-    pathname.startsWith('/privacy') ||
-    pathname.startsWith('/contact')
+  const decision = decideAuthRedirect({
+    pathname,
+    hasUser,
+    stayHome: request.cookies.get(STAY_HOME)?.value === '1',
+  })
 
-  const isProtected = pathname.startsWith('/dashboard') && !isPublicRoute
-  const isLogin = pathname.startsWith('/login')
-
-  if (!user && isProtected) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    url.searchParams.set('next', pathname)
-    const redirectResponse = NextResponse.redirect(url)
-    copyCookies(supabaseResponse, redirectResponse)
-    return redirectResponse
+  if (decision.action === 'next') {
+    if (pathname === '/' && request.cookies.get(STAY_HOME)) {
+      supabaseResponse.cookies.set(STAY_HOME, '', { path: '/', maxAge: 0 })
+    }
+    return supabaseResponse
   }
 
-  if (user && (isLogin || pathname === '/')) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    url.search = ''
-    const redirectResponse = NextResponse.redirect(url)
-    copyCookies(supabaseResponse, redirectResponse)
-    return redirectResponse
+  const url = request.nextUrl.clone()
+  url.pathname = decision.pathname
+  url.search = decision.search
+  const redirectResponse = NextResponse.redirect(url)
+  copySetCookies(supabaseResponse, redirectResponse)
+  if (clearInvalid) {
+    clearAuthCookies(redirectResponse, request)
   }
-
-  return supabaseResponse
+  if (decision.stayHome) {
+    redirectResponse.cookies.set(STAY_HOME, '1', {
+      path: '/',
+      maxAge: 60,
+      httpOnly: true,
+      sameSite: 'lax',
+    })
+  }
+  return redirectResponse
 }

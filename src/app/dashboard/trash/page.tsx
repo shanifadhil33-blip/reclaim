@@ -11,7 +11,7 @@ export default async function TrashPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/auth/expired");
   }
 
   const { data: appeals, error } = await getTrashedAppeals();
