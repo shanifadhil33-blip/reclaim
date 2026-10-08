@@ -42,6 +42,19 @@ export async function updateSession(request: NextRequest) {
   const user = data?.claims
 
   const pathname = request.nextUrl.pathname
+  if (
+    pathname === '/billing' ||
+    pathname === '/pricing' ||
+    pathname === '/subscribe' ||
+    pathname === '/dashboard/billing'
+  ) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/'
+    url.search = ''
+    const redirectResponse = NextResponse.redirect(url)
+    copyCookies(supabaseResponse, redirectResponse)
+    return redirectResponse
+  }
   // Public marketing/auth surfaces — never gate these behind login.
   // /demo is intentionally open so prospects can try the UI without an account.
   const isPublicRoute =

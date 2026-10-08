@@ -18,7 +18,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { OptionMenu } from "@/components/option-menu";
 import { PortfolioNotice } from "@/components/portfolio-notice";
 import { PublicShell } from "@/components/public-shell";
-import { DEMO_CLAIMS } from "@/lib/demo-data";
+import { DEMO_CLAIMS, sortDemoClaims } from "@/lib/demo-data";
 import type { DenialRow } from "@/stores/extraction-store";
 
 const SORTS = [
@@ -33,11 +33,6 @@ const FILTERS = [
   { value: "completed", label: "Letter ready" },
   { value: "needs_notes", label: "Needs notes" },
 ];
-
-function money(value: string): number {
-  const parsed = Number(value.replace(/[^0-9.]/g, ""));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
 
 function DemoScreen() {
   const router = useRouter();
@@ -56,16 +51,7 @@ function DemoScreen() {
 
   const rows = useMemo(() => {
     const filtered = DEMO_CLAIMS.filter((row) => status === "all" || row.status === status);
-    const copy = [...filtered];
-    copy.sort((a, b) => {
-      if (sort === "patient") return a.patientName.localeCompare(b.patientName);
-      if (sort === "payer") {
-        return a.payerName.localeCompare(b.payerName) || a.patientName.localeCompare(b.patientName);
-      }
-      if (sort === "amount") return money(b.billedAmount) - money(a.billedAmount);
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-    return copy;
+    return sortDemoClaims(filtered, sort);
   }, [sort, status]);
 
   const selected = rows.find((row) => row.id === selectedId) ?? DEMO_CLAIMS.find((row) => row.id === selectedId) ?? null;

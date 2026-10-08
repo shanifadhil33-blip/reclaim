@@ -89,7 +89,7 @@ function saveRows(rows: DenialRow[]) {
 async function sendChunkToAPI(
   payload: { images?: string[]; text?: string },
   chunkLabel: string
-): Promise<{ rows: DenialRow[]; validationAttempts: number }> {
+): Promise<{ rows: DenialRow[]; validationAttempts: number; warnings: string[] }> {
   console.log(`[CHUNK] Sending ${chunkLabel}...`);
   const res = await fetch("/api/extract", {
     method: "POST",
@@ -111,16 +111,20 @@ async function sendChunkToAPI(
     throw new Error(message);
   }
 
-  if (data.warnings?.length) {
-    console.warn(`[CHUNK] ${chunkLabel} warnings: ${data.warnings.length}`);
+  const warnings = Array.isArray(data.warnings)
+    ? data.warnings.filter((item: unknown): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
+  if (warnings.length > 0) {
+    console.warn(`[CHUNK] ${chunkLabel} warnings: ${warnings.join(" | ")}`);
   }
 
   const validationAttempts = data.validationAttempts || 1;
 
-  if (!data.claims || data.claims.length === 0) return { rows: [], validationAttempts };
+  if (!data.claims || data.claims.length === 0) return { rows: [], validationAttempts, warnings };
   return {
     rows: data.claims.map((c: Partial<DenialRow>, i: number) => claimToRow(c, i)),
     validationAttempts,
+    warnings,
   };
 }
 
@@ -213,7 +217,8 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
       progressTotalPages: 0,
     });
 
-    let totalDenialsFound = 0;
+      let totalDenialsFound = 0;
+      const extractionWarnings: string[] = [];
 
     try {
       const pdfjsLib = await import("pdfjs-dist");
@@ -383,6 +388,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
               try {
                 const result = await sendChunkToAPI({ text }, `TEXT ${chunkLabel}`);
                 newRows = result.rows;
+                extractionWarnings.push(...result.warnings);
                 if (result.validationAttempts > 1) {
                   set({ extractionPhase: `Verified on attempt ${result.validationAttempts} of 3` });
                 } else {
@@ -403,6 +409,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
               set({ extractionPhase: "Extracting data..." });
               const result = await sendChunkToAPI({ images }, `VISION ${chunkLabel}`);
               newRows = result.rows;
+              extractionWarnings.push(...result.warnings);
 
               if (result.validationAttempts > 1) {
                 set({ extractionPhase: `Verified on attempt ${result.validationAttempts} of 3` });
@@ -422,6 +429,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
                 if (text.length > 50) {
                   const fallbackResult = await sendChunkToAPI({ text }, `TEXT-FALLBACK ${chunkLabel}`);
                   newRows = fallbackResult.rows;
+                  extractionWarnings.push(...fallbackResult.warnings);
                   if (fallbackResult.validationAttempts > 1) {
                     set({ extractionPhase: `Verified on attempt ${fallbackResult.validationAttempts} of 3` });
                   } else {
@@ -466,7 +474,12 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
           `Done! Found ${totalDenialsFound} denied claim(s) across ${grandTotalPages} pages.`
         );
       } else {
-        toast.warning("No denied claims found in any of the uploaded EOBs.");
+        const detail = [...new Set(extractionWarnings)].slice(0, 3).join(" ");
+        toast.warning(
+          detail
+            ? `No denied claims found. ${detail}`
+            : "No denied claims found in any of the uploaded EOBs."
+        );
       }
     } catch (err: unknown) {
       console.error("[PIPELINE FATAL]", err);

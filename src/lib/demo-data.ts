@@ -7,6 +7,31 @@ const FICTIONAL_BANNER =
  * Made-up denial rows for the public Live Demo (/demo).
  * Fully client-side — never sent to extract/appeal APIs.
  */
+function serviceTime(value: string): number {
+  const match = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (!match) return 0
+  return Date.UTC(Number(match[3]), Number(match[1]) - 1, Number(match[2]))
+}
+
+function money(value: string): number {
+  const parsed = Number(value.replace(/[^0-9.]/g, ''))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+export function sortDemoClaims<T extends Pick<DenialRow, 'patientName' | 'payerName' | 'billedAmount' | 'dateOfService'>>(
+  rows: T[],
+  sort: string,
+): T[] {
+  const copy = [...rows]
+  copy.sort((a, b) => {
+    if (sort === 'patient') return a.patientName.localeCompare(b.patientName)
+    if (sort === 'payer') return a.payerName.localeCompare(b.payerName) || a.patientName.localeCompare(b.patientName)
+    if (sort === 'amount') return money(b.billedAmount) - money(a.billedAmount) || a.patientName.localeCompare(b.patientName)
+    return serviceTime(b.dateOfService) - serviceTime(a.dateOfService) || a.patientName.localeCompare(b.patientName)
+  })
+  return copy
+}
+
 export const DEMO_CLAIMS: DenialRow[] = [
   {
     id: 'demo-claim-001',
