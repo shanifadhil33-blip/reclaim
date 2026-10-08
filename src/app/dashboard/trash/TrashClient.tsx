@@ -24,18 +24,19 @@ type TrashedItem = {
 };
 
 const TRASH_EVENT = "reclaim-trash-change";
+const EMPTY_TRASH: TrashedItem[] = [];
+let trashCacheKey = "";
+let trashCacheValue: TrashedItem[] = EMPTY_TRASH;
 
 function textField(row: Record<string, unknown>, key: string): string | undefined {
   return typeof row[key] === "string" ? row[key] : undefined;
 }
 
-function readLocalTrash(): TrashedItem[] {
+function parseTrash(raw: string): TrashedItem[] {
   try {
-    const raw = window.localStorage.getItem("reclaim_eob_trash");
-    if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.flatMap((item) => {
+    if (!Array.isArray(parsed)) return EMPTY_TRASH;
+    const items = parsed.flatMap((item) => {
       if (!item || typeof item !== "object") return [];
       const row = item as Record<string, unknown>;
       if (typeof row.id !== "string") return [];
@@ -52,14 +53,38 @@ function readLocalTrash(): TrashedItem[] {
         },
       ];
     });
+    return items.length > 0 ? items : EMPTY_TRASH;
   } catch {
-    return [];
+    return EMPTY_TRASH;
   }
+}
+
+function readLocalTrash(): TrashedItem[] {
+  if (typeof window === "undefined") return EMPTY_TRASH;
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem("reclaim_eob_trash");
+  } catch {
+    return EMPTY_TRASH;
+  }
+  const key = raw ?? "";
+  if (key === trashCacheKey) return trashCacheValue;
+  trashCacheKey = key;
+  trashCacheValue = raw ? parseTrash(raw) : EMPTY_TRASH;
+  return trashCacheValue;
+}
+
+function serverTrash(): TrashedItem[] {
+  return EMPTY_TRASH;
 }
 
 function subscribeTrash(onStoreChange: () => void) {
   window.addEventListener(TRASH_EVENT, onStoreChange);
-  return () => window.removeEventListener(TRASH_EVENT, onStoreChange);
+  window.addEventListener("storage", onStoreChange);
+  return () => {
+    window.removeEventListener(TRASH_EVENT, onStoreChange);
+    window.removeEventListener("storage", onStoreChange);
+  };
 }
 
 function writeLocalTrash(items: TrashedItem[]) {
@@ -106,7 +131,7 @@ function display(item: TrashedItem) {
 }
 
 export default function TrashClient({ initialAppeals }: { initialAppeals: unknown[] }) {
-  const localItems = useSyncExternalStore(subscribeTrash, readLocalTrash, () => []);
+  const localItems = useSyncExternalStore(subscribeTrash, readLocalTrash, serverTrash);
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [emptying, setEmptying] = useState(false);

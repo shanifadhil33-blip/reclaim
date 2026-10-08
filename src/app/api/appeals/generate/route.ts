@@ -5,10 +5,9 @@ export const maxDuration = 60;
 
 // Free models on OpenRouter — ordered by preference.
 const FREE_MODELS = [
-  "meta-llama/llama-3-8b-instruct:free",
-  "google/gemma-2-9b-it:free",
-  "mistralai/mistral-7b-instruct:free",
   "openrouter/free",
+  "google/gemma-4-26b-a4b-it:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
 ];
 
 const SYSTEM_PROMPT = `You are a medical billing appeals assistant.
