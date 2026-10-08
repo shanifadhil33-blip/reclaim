@@ -7,7 +7,6 @@ A portfolio project for drafting insurance appeal letters. Drop an EOB PDF, extr
 - **Framework:** Next.js 16 (App Router)
 - **Styling:** Tailwind CSS + shadcn/ui
 - **Database & Auth:** Supabase (PostgreSQL, Auth, RLS)
-- **Payments:** Polar.sh ($19/month subscription)
 - **AI:** OpenRouter (Vision models for EOB extraction, text models for letter generation)
 - **PDF Processing:** pdfjs-dist (client-side rendering)
 
@@ -35,5 +34,4 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 OPENROUTER_API_KEY=
-NEXT_PUBLIC_POLAR_CHECKOUT_URL=
 ```

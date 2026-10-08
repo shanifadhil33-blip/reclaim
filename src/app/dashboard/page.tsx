@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -76,8 +75,7 @@ export default function ReclaimDashboard() {
   const [editPaidAmount, setEditPaidAmount] = useState("");
   const [editPayerName, setEditPayerName] = useState("");
   const [isDataVerified, setIsDataVerified] = useState(false);
-  const router = useRouter();
-  const trialActiveRef = useRef<boolean | null>(null); // null = not yet checked
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Stamp local denial rows with this account before reading them.
   useEffect(() => {
@@ -97,56 +95,6 @@ export default function ReclaimDashboard() {
       cancelled = true;
     };
   }, [loadFromStorage]);
-
-  // Check trial status on mount
-  useEffect(() => {
-    const checkTrial = async () => {
-      try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("trial_ends_at, subscription_status")
-          .eq("id", user.id)
-          .single();
-        if (profile) {
-          const isActive = profile.subscription_status === "active" || new Date() <= new Date(profile.trial_ends_at);
-          if (isActive) {
-            trialActiveRef.current = isActive;
-            return;
-          }
-          
-          // DB says not active — verify with Polar API as a safety net
-          // This catches cases where webhooks failed or corrupted the status
-          try {
-            const res = await fetch("/api/verify-subscription", { method: "POST" });
-            if (res.ok) {
-              const data = await res.json();
-              if (data.status === "active") {
-                trialActiveRef.current = true;
-                return;
-              }
-            }
-          } catch { /* verification failed — fall through to DB value */ }
-
-          trialActiveRef.current = false;
-        }
-      } catch { /* fail open — let the API catch it */ }
-    };
-    checkTrial();
-  }, []);
-
-
-  // Guard: redirect to billing if trial expired
-  const guardTrial = (): boolean => {
-    if (trialActiveRef.current === false) {
-      toast.error("Your 14-day free trial has expired. Please upgrade to continue.");
-      router.push("/dashboard/billing");
-      return false;
-    }
-    return true;
-  };
 
   const selectedRow = rows.find(r => r.id === selectedRowId);
 
@@ -212,7 +160,6 @@ export default function ReclaimDashboard() {
   // ── Generate Appeal ──
   const handleGenerate = async () => {
     if (!selectedRow) return;
-    if (!guardTrial()) return;
     if (!clinicalNotes.trim()) { toast.warning("Please paste clinical notes before generating."); return; }
     if (!isDataVerified) { toast.warning("Please verify the extracted data before generating."); return; }
 
@@ -252,7 +199,7 @@ export default function ReclaimDashboard() {
         payerName: editPayerName,
       } : r));
       toast.success("Appeal letter generated & saved!");
-    } catch (err: any) { toast.error(err.message || "An error occurred."); }
+    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : "An error occurred."); }
     finally { setIsGenerating(false); }
   };
 
@@ -312,7 +259,7 @@ export default function ReclaimDashboard() {
               <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/>
             </svg>
             <h3 className="text-xl font-semibold text-white mb-2">Drop EOB PDFs here or click to browse</h3>
-            <p className="text-neutral-400 max-w-lg">Add one or many PDFs. When ready, click &quot;Extract Denials&quot; to process them all.</p>
+            <p className="text-neutral-400 max-w-lg">Use a fictional PDF. After you add files, extract the denied lines from this same box.</p>
           </div>
         ) : (
           /* ── Files Queued: Show queue + extract button inside the box ── */
@@ -363,7 +310,7 @@ export default function ReclaimDashboard() {
             </div>
 
             {/* Extract Button */}
-            <Button onClick={(e: React.MouseEvent) => { e.stopPropagation(); if (!guardTrial()) return; processQueue(); }} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white h-12 text-base font-semibold shadow-[0_0_25px_rgba(99,102,241,0.3)] hover:shadow-[0_0_35px_rgba(99,102,241,0.5)] transition-all rounded-xl border border-indigo-500/50">
+            <Button onClick={(e: React.MouseEvent) => { e.stopPropagation(); void processQueue(); }} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white h-12 text-base font-semibold rounded-xl border border-indigo-500/50">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
               Extract Denials from {queuedFiles.length} PDF{queuedFiles.length > 1 ? "s" : ""}
             </Button>
@@ -411,16 +358,7 @@ export default function ReclaimDashboard() {
             {selectedIds.size > 0 && (
               <Button
                 size="sm"
-                onClick={() => {
-                  if (confirm(`Delete ${selectedIds.size} selected claim(s)?`)) {
-                    const toTrash = rows.filter(r => selectedIds.has(r.id));
-                    moveToTrash(toTrash);
-                    setRows(prev => prev.filter(r => !selectedIds.has(r.id)));
-                    toast.success(`Moved ${selectedIds.size} claim(s) to Recycle Bin.`);
-                    setSelectedIds(new Set());
-                    setIsSelectionMode(false);
-                  }
-                }}
+                onClick={() => setConfirmDelete(true)}
                 className="bg-red-600 hover:bg-red-500 text-white border-red-500/50 text-xs h-8 px-4"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -451,8 +389,35 @@ export default function ReclaimDashboard() {
             </Button>
           )}
         </CardHeader>
-        {/* This div is the scroll container — thead sticks inside it */}
-        <div className="overflow-y-auto overflow-x-auto max-h-[calc(100vh-280px)]">
+        <ul className="md:hidden divide-y divide-white/10">
+          {rows.length === 0 ? (
+            <li className="px-4 py-12 text-center text-neutral-500">No claims loaded. Upload an EOB PDF to begin.</li>
+          ) : rows.map((row) => (
+            <li key={row.id}>
+              <div className="flex items-start gap-3 px-4 py-4">
+                {isSelectionMode ? (
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-5 w-5"
+                    checked={selectedIds.has(row.id)}
+                    onChange={() => {
+                      const next = new Set(selectedIds);
+                      if (next.has(row.id)) next.delete(row.id);
+                      else next.add(row.id);
+                      setSelectedIds(next);
+                    }}
+                  />
+                ) : null}
+                <button type="button" onClick={() => openModal(row)} className="min-w-0 flex-1 text-left">
+                  <span className="block font-medium text-white">{row.patientName}</span>
+                  <span className="mt-1 block text-sm text-neutral-400">{row.dateOfService} · {row.billedCPT} · {row.payerName}</span>
+                  <span className="mt-1 block font-mono text-xs text-red-300">{row.denialCode}</span>
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden max-h-[calc(100vh-280px)] overflow-x-auto overflow-y-auto md:block">
           <Table>
             <TableHeader className="bg-[#0f172a] sticky top-0 z-10">
               <TableRow className="border-white/5 hover:bg-transparent">
@@ -655,7 +620,7 @@ export default function ReclaimDashboard() {
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
                       Paste EMR Clinical Notes
                     </Label>
-                    <p className="text-xs text-neutral-400 leading-relaxed">Copy the doctor's raw clinical notes from your EMR for this date of service.</p>
+                    <p className="text-xs text-neutral-400 leading-relaxed">Copy the clinical notes for this date of service.</p>
                   </div>
                   <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-xl focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all overflow-hidden flex flex-col">
                     <Textarea id="clinicalNotes" autoFocus placeholder="Paste raw notes here (Ctrl+V)..." className="min-h-[180px] bg-transparent border-0 text-foreground placeholder:text-muted-foreground focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-ring/40 resize-y text-base p-4 custom-scrollbar" value={clinicalNotes} onChange={(e) => setClinicalNotes(e.target.value)} />
@@ -717,12 +682,30 @@ export default function ReclaimDashboard() {
               <Button type="button" variant="outline" onClick={handleNext} disabled={!hasNext} className="bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-35 disabled:text-muted-foreground/70 flex-1 sm:flex-none">Next</Button>
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
-              <Link href="/dashboard/history" passHref><Button type="button" variant="outline" className="bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-accent w-full sm:w-auto">Saved Letters</Button></Link>
-              <Button type="button" variant="outline" onClick={closeModal} className="bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-accent w-full sm:w-auto">Close</Button>
+              <Button type="button" variant="outline" onClick={closeModal} className="h-11 bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-accent w-full sm:w-auto">Close</Button>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={confirmDelete}
+        title={`Delete ${selectedIds.size} claim${selectedIds.size === 1 ? "" : "s"}?`}
+        body="They move to the recycle bin. You can restore them from History."
+        confirmLabel="Delete"
+        pendingLabel="Deleting…"
+        pending={false}
+        destructive
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => {
+          const toTrash = rows.filter((row) => selectedIds.has(row.id));
+          moveToTrash(toTrash);
+          setRows((prev) => prev.filter((row) => !selectedIds.has(row.id)));
+          toast.success(`Moved ${selectedIds.size} claim${selectedIds.size === 1 ? "" : "s"} to the recycle bin.`);
+          setSelectedIds(new Set());
+          setIsSelectionMode(false);
+          setConfirmDelete(false);
+        }}
+      />
     </div>
   );
 }

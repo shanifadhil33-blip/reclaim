@@ -1,253 +1,260 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useRouter } from "next/navigation";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { restoreAppeal, permanentDeleteAppeal, emptyTrash } from "./actions";
 
-interface TrashedItem {
+type TrashedItem = {
   id: string;
-  // Supabase appeal fields
+  source: "supabase" | "local";
   insurance_company?: string;
   date_of_service?: string;
   medical_code?: string;
   deleted_at?: string;
-  // localStorage worklist fields
   patientAccount?: string;
-  patientName?: string;
+  payerName?: string;
   dateOfService?: string;
   billedCPT?: string;
   denialCode?: string;
-  denialReason?: string;
-  payerName?: string;
   deletedAt?: string;
-  source?: "supabase" | "local";
+};
+
+const TRASH_EVENT = "reclaim-trash-change";
+
+function textField(row: Record<string, unknown>, key: string): string | undefined {
+  return typeof row[key] === "string" ? row[key] : undefined;
 }
 
-export default function TrashClient({ initialAppeals }: { initialAppeals: any[] }) {
-  const [items, setItems] = useState<TrashedItem[]>([]);
-  const [restoringId, setRestoringId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [isEmptying, setIsEmptying] = useState(false);
-  const router = useRouter();
-
-  // Merge Supabase appeals and localStorage worklist trash
-  useEffect(() => {
-    const supabaseItems: TrashedItem[] = (initialAppeals || []).map(a => ({
-      ...a,
-      source: "supabase" as const,
-    }));
-
-    let localItems: TrashedItem[] = [];
-    try {
-      const raw = localStorage.getItem("reclaim_eob_trash");
-      if (raw) {
-        localItems = JSON.parse(raw).map((item: any) => ({
-          ...item,
+function readLocalTrash(): TrashedItem[] {
+  try {
+    const raw = window.localStorage.getItem("reclaim_eob_trash");
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const row = item as Record<string, unknown>;
+      if (typeof row.id !== "string") return [];
+      return [
+        {
+          id: row.id,
           source: "local" as const,
-        }));
-      }
-    } catch (e) {
-      console.error("Failed to parse recycle bin localStorage");
-    }
+          patientAccount: textField(row, "patientAccount"),
+          payerName: textField(row, "payerName"),
+          dateOfService: textField(row, "dateOfService"),
+          billedCPT: textField(row, "billedCPT"),
+          denialCode: textField(row, "denialCode"),
+          deletedAt: textField(row, "deletedAt"),
+        },
+      ];
+    });
+  } catch {
+    return [];
+  }
+}
 
-    setItems([...localItems, ...supabaseItems]);
-  }, [initialAppeals]);
+function subscribeTrash(onStoreChange: () => void) {
+  window.addEventListener(TRASH_EVENT, onStoreChange);
+  return () => window.removeEventListener(TRASH_EVENT, onStoreChange);
+}
 
-  const handleRestore = async (item: TrashedItem) => {
+function writeLocalTrash(items: TrashedItem[]) {
+  window.localStorage.setItem(
+    "reclaim_eob_trash",
+    JSON.stringify(items.filter((item) => item.source === "local"))
+  );
+  window.dispatchEvent(new Event(TRASH_EVENT));
+}
+
+function serverItems(initialAppeals: unknown[]): TrashedItem[] {
+  return initialAppeals.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Record<string, unknown>;
+    if (typeof row.id !== "string") return [];
+    return [
+      {
+        id: row.id,
+        source: "supabase" as const,
+        insurance_company: textField(row, "insurance_company"),
+        date_of_service: textField(row, "date_of_service"),
+        medical_code: textField(row, "medical_code"),
+        deleted_at: textField(row, "deleted_at"),
+      },
+    ];
+  });
+}
+
+function display(item: TrashedItem) {
+  if (item.source === "supabase") {
+    return {
+      label: "Letter",
+      name: item.insurance_company || "Unknown payer",
+      date: item.date_of_service || "No date",
+      code: item.medical_code || "No code",
+    };
+  }
+  return {
+    label: "Claim",
+    name: item.payerName || item.patientAccount || "Unknown claim",
+    date: item.dateOfService || "No date",
+    code: item.billedCPT || item.denialCode || "No code",
+  };
+}
+
+export default function TrashClient({ initialAppeals }: { initialAppeals: unknown[] }) {
+  const localItems = useSyncExternalStore(subscribeTrash, readLocalTrash, () => []);
+  const [hiddenIds, setHiddenIds] = useState<string[]>([]);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [emptying, setEmptying] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<TrashedItem | null>(null);
+  const [emptyOpen, setEmptyOpen] = useState(false);
+  const router = useRouter();
+  const saved = serverItems(initialAppeals);
+  const items = [...localItems, ...saved].filter((item) => !hiddenIds.includes(item.id));
+
+  const restore = async (item: TrashedItem) => {
     if (item.source === "local") {
-      // Restore back to worklist localStorage
-      try {
-        const worklist = JSON.parse(localStorage.getItem("reclaim_eob_worklist") || "[]");
-        const { deletedAt, source, ...cleanItem } = item;
-        worklist.unshift(cleanItem);
-        localStorage.setItem("reclaim_eob_worklist", JSON.stringify(worklist));
-
-        // Remove from trash localStorage
-        const trash = JSON.parse(localStorage.getItem("reclaim_eob_trash") || "[]");
-        localStorage.setItem("reclaim_eob_trash", JSON.stringify(trash.filter((t: any) => t.id !== item.id)));
-
-        setItems(prev => prev.filter(i => i.id !== item.id));
-        toast.success("Claim restored to worklist. Refresh the dashboard to see it.");
-      } catch (e) {
-        toast.error("Failed to restore claim.");
-      }
+      const worklistRaw = window.localStorage.getItem("reclaim_eob_worklist");
+      const worklist: unknown = worklistRaw ? JSON.parse(worklistRaw) : [];
+      const nextWorklist = Array.isArray(worklist) ? worklist : [];
+      nextWorklist.unshift({
+        id: item.id,
+        patientAccount: item.patientAccount,
+        payerName: item.payerName,
+        dateOfService: item.dateOfService,
+        billedCPT: item.billedCPT,
+        denialCode: item.denialCode,
+      });
+      window.localStorage.setItem("reclaim_eob_worklist", JSON.stringify(nextWorklist));
+      writeLocalTrash(localItems.filter((row) => row.id !== item.id));
+      toast.success("Claim restored to the worklist.");
       return;
     }
-
-    // Supabase restore
-    setRestoringId(item.id);
+    setPendingId(item.id);
     const { success, error } = await restoreAppeal(item.id);
-    setRestoringId(null);
-
-    if (success) {
-      setItems(prev => prev.filter(i => i.id !== item.id));
-      toast.success("Appeal restored to history.");
-      router.refresh();
-    } else {
-      toast.error("Failed to restore: " + error);
-    }
-  };
-
-  const handleDelete = async (item: TrashedItem) => {
-    if (!confirm("Permanently delete this item? This cannot be undone.")) return;
-
-    if (item.source === "local") {
-      const trash = JSON.parse(localStorage.getItem("reclaim_eob_trash") || "[]");
-      localStorage.setItem("reclaim_eob_trash", JSON.stringify(trash.filter((t: any) => t.id !== item.id)));
-      setItems(prev => prev.filter(i => i.id !== item.id));
-      toast.success("Permanently deleted.");
+    setPendingId(null);
+    if (!success) {
+      toast.error(error ? `Couldn't restore: ${error}` : "Couldn't restore that letter.");
       return;
     }
-
-    setDeletingId(item.id);
-    const { success, error } = await permanentDeleteAppeal(item.id);
-    setDeletingId(null);
-
-    if (success) {
-      setItems(prev => prev.filter(i => i.id !== item.id));
-      toast.success("Appeal permanently deleted.");
-      router.refresh();
-    } else {
-      toast.error("Failed to delete: " + error);
-    }
-  };
-
-  const handleEmptyTrash = async () => {
-    if (!confirm("Permanently delete ALL items in the Recycle Bin? This cannot be undone.")) return;
-
-    setIsEmptying(true);
-
-    // Clear localStorage trash
-    localStorage.removeItem("reclaim_eob_trash");
-
-    // Clear Supabase trash
-    const supabaseItems = items.filter(i => i.source === "supabase");
-    if (supabaseItems.length > 0) {
-      const { success, error } = await emptyTrash();
-      if (!success) {
-        toast.error("Failed to empty Supabase trash: " + error);
-        setIsEmptying(false);
-        return;
-      }
-    }
-
-    setItems([]);
-    setIsEmptying(false);
-    toast.success("Recycle Bin emptied.");
+    setHiddenIds((current) => [...current, item.id]);
+    toast.success("Letter restored to history.");
     router.refresh();
   };
 
-  // Helper to get display values for both sources
-  const getDisplay = (item: TrashedItem) => {
-    if (item.source === "supabase") {
-      return {
-        label: "Appeal",
-        name: item.insurance_company || "Unknown",
-        date: item.date_of_service || "N/A",
-        code: item.medical_code || "N/A",
-        deletedOn: item.deleted_at ? new Date(item.deleted_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : "N/A",
-      };
+  const removeForever = async (item: TrashedItem) => {
+    if (item.source === "local") {
+      writeLocalTrash(localItems.filter((row) => row.id !== item.id));
+      setDeleteTarget(null);
+      toast.success("Claim deleted.");
+      return;
     }
-    return {
-      label: "Claim",
-      name: item.payerName || item.patientAccount || "Unknown",
-      date: item.dateOfService || "N/A",
-      code: item.billedCPT || item.denialCode || "N/A",
-      deletedOn: item.deletedAt ? new Date(item.deletedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : "N/A",
-    };
+    setPendingId(item.id);
+    const { success, error } = await permanentDeleteAppeal(item.id);
+    setPendingId(null);
+    if (!success) {
+      toast.error(error ? `Couldn't delete: ${error}` : "Couldn't delete that letter.");
+      return;
+    }
+    setHiddenIds((current) => [...current, item.id]);
+    setDeleteTarget(null);
+    toast.success("Letter deleted.");
+    router.refresh();
+  };
+
+  const emptyBin = async () => {
+    setEmptying(true);
+    window.localStorage.removeItem("reclaim_eob_trash");
+    window.dispatchEvent(new Event(TRASH_EVENT));
+    if (saved.length > 0) {
+      const { success, error } = await emptyTrash();
+      if (!success) {
+        setEmptying(false);
+        toast.error(error ? `Couldn't empty the bin: ${error}` : "Couldn't empty the bin.");
+        return;
+      }
+    }
+    setHiddenIds(saved.map((item) => item.id));
+    setEmptying(false);
+    setEmptyOpen(false);
+    toast.success("Recycle bin emptied.");
+    router.refresh();
   };
 
   if (items.length === 0) {
     return (
-      <div className="bg-neutral-900/30 border border-white/5 rounded-xl p-12 text-center">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-4 opacity-20 text-white"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-        <h3 className="text-xl font-medium text-white mb-2">Recycle Bin is Empty</h3>
-        <p className="text-neutral-500 max-w-sm mx-auto">
-          Deleted claims and appeals will appear here so you can restore them if needed.
-        </p>
+      <div className="rounded-xl border border-white/10 bg-white/5 p-10 text-center">
+        <h2 className="text-xl font-medium text-white">Recycle bin is empty</h2>
+        <p className="mx-auto mt-2 max-w-sm text-neutral-400">Deleted claims and letters show up here until you restore or delete them.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex justify-end">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleEmptyTrash} 
-          disabled={isEmptying}
-          className="border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
-        >
-          {isEmptying ? "Emptying..." : "Empty Recycle Bin"}
+        <Button type="button" variant="outline" onClick={() => setEmptyOpen(true)} disabled={emptying} className="h-11 border-red-500/30 text-red-300">
+          {emptying ? "Emptying…" : "Empty recycle bin"}
         </Button>
       </div>
-
-      <div className="bg-neutral-900/50 border border-white/10 rounded-xl overflow-hidden shadow-2xl backdrop-blur-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-neutral-400 uppercase bg-[#0f172a] border-b border-white/10">
-              <tr>
-                <th className="px-6 py-4 font-medium tracking-wider">Type</th>
-                <th className="px-6 py-4 font-medium tracking-wider">Payer / Patient</th>
-                <th className="px-6 py-4 font-medium tracking-wider">Date</th>
-                <th className="px-6 py-4 font-medium tracking-wider">Code</th>
-                <th className="px-6 py-4 font-medium tracking-wider">Deleted On</th>
-                <th className="px-6 py-4 font-medium tracking-wider text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {items.map((item) => {
-                const d = getDisplay(item);
-                return (
-                  <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
-                    <td className="px-6 py-4">
-                      <Badge variant="outline" className={`text-xs ${item.source === "local" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-indigo-500/10 text-indigo-300 border-indigo-500/20"}`}>
-                        {d.label}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-neutral-300">{d.name}</div>
-                    </td>
-                    <td className="px-6 py-4 text-neutral-400">{d.date}</td>
-                    <td className="px-6 py-4">
-                      <Badge variant="outline" className="bg-indigo-500/10 text-indigo-300 border-indigo-500/20 font-mono">
-                        {d.code}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-neutral-500">{d.deletedOn}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end items-center gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleRestore(item)}
-                          disabled={restoringId === item.id}
-                          className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
-                        >
-                          {restoringId === item.id ? "Restoring..." : "Restore"}
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleDelete(item)}
-                          disabled={deletingId === item.id}
-                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                        >
-                          {deletingId === item.id ? "Deleting..." : "Delete"}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <ul className="space-y-3">
+        {items.map((item) => {
+          const shown = display(item);
+          return (
+            <li key={`${item.source}-${item.id}`} className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <Badge className="bg-white/10 text-neutral-200">{shown.label}</Badge>
+                  <p className="mt-2 font-medium text-white">{shown.name}</p>
+                  <p className="text-sm text-neutral-400">{shown.date} · {shown.code}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="h-11" disabled={pendingId === item.id} onClick={() => void restore(item)}>
+                    {pendingId === item.id ? "Working…" : "Restore"}
+                  </Button>
+                  <Button type="button" variant="outline" className="h-11 border-red-500/30 text-red-300" disabled={pendingId === item.id} onClick={() => setDeleteTarget(item)}>
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete this item?"
+        body="This cannot be undone."
+        confirmLabel="Delete"
+        pendingLabel="Deleting…"
+        pending={!!deleteTarget && pendingId === deleteTarget.id}
+        destructive
+        onCancel={() => {
+          if (!pendingId) setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          if (deleteTarget) void removeForever(deleteTarget);
+        }}
+      />
+      <ConfirmDialog
+        open={emptyOpen}
+        title="Empty the recycle bin?"
+        body="Every item in the bin is deleted. This cannot be undone."
+        confirmLabel="Empty bin"
+        pendingLabel="Emptying…"
+        pending={emptying}
+        destructive
+        onCancel={() => {
+          if (!emptying) setEmptyOpen(false);
+        }}
+        onConfirm={() => {
+          void emptyBin();
+        }}
+      />
     </div>
   );
 }

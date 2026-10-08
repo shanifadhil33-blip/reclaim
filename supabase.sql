@@ -11,9 +11,6 @@ CREATE TABLE public.profiles (
     contact_email TEXT,
     contact_phone TEXT,
     npi_number TEXT,
-    polar_subscription_id TEXT,
-    subscription_status TEXT DEFAULT 'trial' CHECK (subscription_status IN ('trial', 'active', 'canceled', 'past_due')),
-    trial_ends_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -51,8 +48,8 @@ CREATE POLICY "Users can delete own appeals" ON public.appeals FOR DELETE USING 
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.profiles (id, trial_ends_at)
-    VALUES (NEW.id, now() + interval '14 days');
+    INSERT INTO public.profiles (id)
+    VALUES (NEW.id);
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

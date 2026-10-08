@@ -1,24 +1,47 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import EditableLetter from "./EditableLetter";
 import { DeleteAppealButton } from "./HistoryActions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { OptionMenu } from "@/components/option-menu";
 import { toast } from "sonner";
 
-export default function HistoryTableClient({ initialAppeals }: { initialAppeals: any[] }) {
+type AppealRecord = {
+  id: string;
+  insurance_company: string | null;
+  medical_code: string | null;
+  created_at: string;
+  date_of_service: string | null;
+  generated_letter: string | null;
+};
+
+const SORTS = [
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+  { value: "payer", label: "Payer name" },
+];
+
+export default function HistoryTableClient({ initialAppeals }: { initialAppeals: AppealRecord[] }) {
   const [appeals, setAppeals] = useState(initialAppeals || []);
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const sort = SORTS.some((item) => item.value === searchParams.get("sort"))
+    ? (searchParams.get("sort") as string)
+    : "newest";
 
   // Filter appeals based on search term (Payer or Code) and date
   const filteredAppeals = useMemo(() => {
-    return appeals.filter(appeal => {
+    const matched = appeals.filter(appeal => {
       const searchLower = searchTerm.toLowerCase();
       const matchesSearch = 
         !searchTerm || 
@@ -30,7 +53,24 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
 
       return matchesSearch && matchesDate;
     });
-  }, [appeals, searchTerm, dateFilter]);
+    matched.sort((a, b) => {
+      if (sort === "payer") {
+        return (a.insurance_company || "").localeCompare(b.insurance_company || "") || a.id.localeCompare(b.id);
+      }
+      const aTime = new Date(a.created_at).getTime();
+      const bTime = new Date(b.created_at).getTime();
+      return sort === "oldest" ? aTime - bTime : bTime - aTime;
+    });
+    return matched;
+  }, [appeals, searchTerm, dateFilter, sort]);
+
+  const setSort = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === "newest") params.delete("sort");
+    else params.set("sort", value);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
 
   // Handle Select All
   const handleSelectAll = (checked: boolean) => {
@@ -105,9 +145,9 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, "Reclaim_Appeals_Export.zip");
       toast.success(`Successfully exported ${selectedAppeals.length} appeals.`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("ZIP Export Error:", error);
-      toast.error("Failed to export files. " + error.message);
+      toast.error(error instanceof Error ? `Failed to export files. ${error.message}` : "Failed to export files.");
     } finally {
       setIsExporting(false);
     }
@@ -142,7 +182,8 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
           <p>Tip: Need to print a batch for signatures? Click <strong>Manage</strong> to select and download multiple appeals in a single ZIP file.</p>
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+          <OptionMenu label="Sort" value={sort} options={SORTS} onChange={setSort} widthClass="w-[11.5rem]" />
           <div className="flex-1">
             <Input 
               type="text" 
@@ -288,7 +329,17 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
 
         {filteredAppeals.length === 0 && (
           <div className="py-12 text-center text-neutral-500 bg-neutral-900/30 border border-white/5 rounded-xl border-dashed">
-            No appeals match your current search filters.
+            <p>No letters match this search.</p>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm("");
+                setDateFilter("");
+              }}
+              className="mt-4 inline-flex h-11 items-center rounded-lg border border-white/15 px-4 text-sm text-white"
+            >
+              Clear filters
+            </button>
           </div>
         )}
       </div>

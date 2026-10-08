@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import * as Sentry from '@sentry/nextjs'
 
 export const dynamic = 'force-dynamic'
@@ -71,87 +70,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  let redirectTo = `${origin}${nextPath}`
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (user) {
-    const deviceFp = request.cookies.get('device_fp')?.value
-
-    if (deviceFp) {
-      const sharedWithOther = await fingerprintUsedByAnotherAccount(supabase, deviceFp, user.id)
-
-      if (sharedWithOther) {
-        const { data: existingRecord } = await supabase
-          .from('device_fingerprints')
-          .select('id')
-          .eq('fingerprint', deviceFp)
-          .eq('user_id', user.id)
-          .maybeSingle()
-
-        if (!existingRecord) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('subscription_status')
-            .eq('id', user.id)
-            .maybeSingle()
-
-          if (!profile || profile.subscription_status !== 'active') {
-            await supabase.auth.signOut()
-            redirectTo = `${origin}/login?error=device_limit`
-            const response = applyCookies(
-              NextResponse.redirect(redirectTo),
-              cookieJar,
-              headerJar
-            )
-            response.cookies.set('device_fp', '', { path: '/', maxAge: 0 })
-            return response
-          }
-        }
-      }
-
-      await supabase.from('device_fingerprints').upsert(
-        {
-          user_id: user.id,
-          fingerprint: deviceFp,
-          last_seen_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id,fingerprint' }
-      )
-
-      const response = applyCookies(NextResponse.redirect(redirectTo), cookieJar, headerJar)
-      response.cookies.set('device_fp', '', { path: '/', maxAge: 0 })
-      return response
-    }
-  }
-
-  return applyCookies(NextResponse.redirect(redirectTo), cookieJar, headerJar)
-}
-
-async function fingerprintUsedByAnotherAccount(
-  supabase: SupabaseClient,
-  deviceFp: string,
-  userId: string
-): Promise<boolean> {
-  const { data, error } = await supabase.rpc('device_fingerprint_in_use', {
-    p_fingerprint: deviceFp,
-  })
-
-  if (!error && typeof data === 'boolean') {
-    return data
-  }
-
-  // Until device_fingerprints_lock_select.sql is applied by hand, the
-  // boolean function is missing and the old select still answers this.
-  const { count } = await supabase
-    .from('device_fingerprints')
-    .select('*', { count: 'exact', head: true })
-    .eq('fingerprint', deviceFp)
-    .neq('user_id', userId)
-
-  return typeof count === 'number' && count >= 1
+  return applyCookies(NextResponse.redirect(`${origin}${nextPath}`), cookieJar, headerJar)
 }
 
 function applyCookies(

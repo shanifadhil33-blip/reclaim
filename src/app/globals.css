@@ -212,3 +212,44 @@ input[type="checkbox"]:focus-visible {
 input[type="date"] {
   color-scheme: dark;
 }
+
+html {
+  background: #0a0a0a;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(129, 140, 248, 0.9);
+  outline-offset: 2px;
+}
+
+@media (hover: none), (pointer: coarse) {
+  a:hover,
+  a:active,
+  button:hover,
+  button:active,
+  [role="button"]:hover,
+  [role="button"]:active {
+    transform: none !important;
+  }
+}
+
+@keyframes page-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.page-enter {
+  animation: page-enter 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
+}

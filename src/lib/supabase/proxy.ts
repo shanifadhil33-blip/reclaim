@@ -65,7 +65,7 @@ export async function updateSession(request: NextRequest) {
     return redirectResponse
   }
 
-  if (user && isLogin) {
+  if (user && (isLogin || pathname === '/')) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     url.search = ''
