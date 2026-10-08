@@ -156,7 +156,7 @@ function sanitizeAndParseJSON(raw: string): any[] {
   const lastBracket = text.lastIndexOf("]");
 
   if (firstBracket === -1 || lastBracket === -1 || lastBracket <= firstBracket) {
-    console.error("[EXTRACT] No JSON array found in response. Raw:", text.substring(0, 500));
+    console.error("[EXTRACT] No JSON array found in response. Length:", text.length);
     return [];
   }
 
@@ -170,10 +170,10 @@ function sanitizeAndParseJSON(raw: string): any[] {
     }
     // Normalize every claim to our strict schema
     const normalized = parsed.map(item => normalizeClaim(item));
-    console.log(`[EXTRACT] Normalized ${normalized.length} claims. Sample:`, JSON.stringify(normalized[0]).substring(0, 200));
+    console.log(`[EXTRACT] Normalized ${normalized.length} claims.`);
     return normalized;
   } catch (e: any) {
-    console.error("[EXTRACT] JSON.parse failed:", e.message, "Input:", jsonString.substring(0, 300));
+    console.error("[EXTRACT] JSON.parse failed:", e.message, "Input length:", jsonString.length);
     return [];
   }
 }
@@ -488,7 +488,6 @@ export async function POST(req: Request) {
     // ── TEXT MODE: send raw PDF text to a text-based LLM ──
     if (isTextMode) {
       console.log(`[EXTRACT] TEXT MODE — ${text.length} chars from user ${user.id}`);
-      console.log(`[EXTRACT] Text preview: ${text.substring(0, 300)}`);
 
       const TEXT_MODELS = [
         "google/gemini-2.0-flash-001",

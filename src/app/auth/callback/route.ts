@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import * as Sentry from '@sentry/nextjs'
 
 export const dynamic = 'force-dynamic'
@@ -80,13 +81,9 @@ export async function GET(request: NextRequest) {
     const deviceFp = request.cookies.get('device_fp')?.value
 
     if (deviceFp) {
-      const { count } = await supabase
-        .from('device_fingerprints')
-        .select('*', { count: 'exact', head: true })
-        .eq('fingerprint', deviceFp)
-        .neq('user_id', user.id)
+      const sharedWithOther = await fingerprintUsedByAnotherAccount(supabase, deviceFp, user.id)
 
-      if (count && count >= 1) {
+      if (sharedWithOther) {
         const { data: existingRecord } = await supabase
           .from('device_fingerprints')
           .select('id')
@@ -131,6 +128,30 @@ export async function GET(request: NextRequest) {
   }
 
   return applyCookies(NextResponse.redirect(redirectTo), cookieJar, headerJar)
+}
+
+async function fingerprintUsedByAnotherAccount(
+  supabase: SupabaseClient,
+  deviceFp: string,
+  userId: string
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc('device_fingerprint_in_use', {
+    p_fingerprint: deviceFp,
+  })
+
+  if (!error && typeof data === 'boolean') {
+    return data
+  }
+
+  // Until device_fingerprints_lock_select.sql is applied by hand, the
+  // boolean function is missing and the old select still answers this.
+  const { count } = await supabase
+    .from('device_fingerprints')
+    .select('*', { count: 'exact', head: true })
+    .eq('fingerprint', deviceFp)
+    .neq('user_id', userId)
+
+  return typeof count === 'number' && count >= 1
 }
 
 function applyCookies(

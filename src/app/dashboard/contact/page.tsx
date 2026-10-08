@@ -72,7 +72,7 @@ export default function ContactPage() {
       {/* Support Note */}
       <div className="mt-10 text-center">
         <p className="text-neutral-500 text-sm">
-          We typically respond within a few hours. For urgent issues, WhatsApp is the fastest way to reach us.
+          Replies come from the person who built this project, when they can. WhatsApp is the faster of the two options on this page.
         </p>
       </div>
     </div>

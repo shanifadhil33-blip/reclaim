@@ -16,10 +16,10 @@ export default function ContactPage() {
           Have a question about Reclaim or need help with your EOB processing? We're here to help.
         </p>
         <div className="pt-8 flex flex-col gap-4">
-          <a href="mailto:support@reclaimapp.com" className="inline-flex items-center justify-center h-14 px-8 text-lg bg-white text-black hover:bg-neutral-200 rounded-full shadow-lg font-medium transition-all">
-            Email support@reclaimapp.com
+          <a href="mailto:shanifadhil33@gmail.com" className="inline-flex items-center justify-center h-14 px-8 text-lg bg-white text-black hover:bg-neutral-200 rounded-full shadow-lg font-medium transition-all">
+            Email shanifadhil33@gmail.com
           </a>
-          <p className="text-sm text-neutral-500 pt-4">We typically reply within 24 business hours.</p>
+          <p className="text-sm text-neutral-500 pt-4">This inbox is checked by the person who built the project.</p>
         </div>
       </div>
     </div>

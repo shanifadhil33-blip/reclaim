@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import FingerprintJS from "@fingerprintjs/fingerprintjs";
+import { PortfolioNotice } from "@/components/portfolio-notice";
 
 function AuthContent() {
   const searchParams = useSearchParams();
@@ -102,6 +103,7 @@ function AuthContent() {
           <p className="text-neutral-400 font-medium text-sm">
             AI-powered insurance appeal letters
           </p>
+          <PortfolioNotice className="rounded-xl text-left sm:text-center" />
         </div>
 
         {/* Card */}
@@ -154,17 +156,12 @@ function AuthContent() {
 
           {/* Subtle info */}
           <p className="text-[11px] text-neutral-500 text-center leading-relaxed">
-            By continuing, you agree to our Terms of Service and Privacy Policy.
+            By continuing, you agree to the{" "}
+            <Link href="/privacy" className="text-neutral-300 underline underline-offset-2 hover:text-white">
+              privacy note
+            </Link>
+            .
           </p>
-        </div>
-
-        {/* Security badge */}
-        <div className="flex items-center justify-center gap-2 text-[11px] text-neutral-600">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m12 22-7-3.5v-6c0-4.4 3.6-8 8-8s8 3.6 8 8v6z"/>
-            <path d="m9 12 2 2 4-4"/>
-          </svg>
-          HIPAA Compliant · End-to-End Encrypted
         </div>
       </div>
     </div>

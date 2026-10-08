@@ -58,7 +58,6 @@ export async function POST(req: Request) {
 
     const eventType = payload.type;
     console.log(`[WEBHOOK] Received event: ${eventType}`);
-    console.log(`[WEBHOOK] Full payload:`, JSON.stringify(payload, null, 2));
 
     const supabase = createAdminClient();
 
