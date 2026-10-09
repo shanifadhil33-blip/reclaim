@@ -103,7 +103,7 @@
   --destructive: oklch(0.65 0.2 25);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.585 0.233 277.117);
+  --ring: oklch(1 0 0 / 42%);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -116,12 +116,12 @@
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.585 0.233 277.117);
+  --sidebar-ring: oklch(1 0 0 / 42%);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
@@ -240,13 +240,22 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus-visibl
 textarea:focus,
 textarea:focus-visible {
   outline: none !important;
+  outline-offset: 0 !important;
   box-shadow: none !important;
-  border-color: rgba(255, 255, 255, 0.42);
+  --tw-ring-shadow: 0 0 #0000 !important;
+  border-color: rgba(255, 255, 255, 0.42) !important;
 }
 
-textarea.border-0:focus,
-textarea.border-0:focus-visible {
-  border-color: transparent;
+/* Notes card: the shell is the 1px edge. The textarea itself stays borderless. */
+.notes-shell:focus-within {
+  border-color: rgba(255, 255, 255, 0.42);
+  outline: none;
+  box-shadow: none;
+}
+
+textarea#clinicalNotes:focus,
+textarea#clinicalNotes:focus-visible {
+  border-color: transparent !important;
 }
 
 @media (hover: none), (pointer: coarse) {

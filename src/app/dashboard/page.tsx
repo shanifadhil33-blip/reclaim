@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -38,6 +38,7 @@ function timeAgo(isoString: string): string {
 }
 
 export default function ReclaimDashboard() {
+  const appealTitleRef = useRef<HTMLHeadingElement>(null);
   // ── Store (survives navigation) ──
   const rows = useExtractionStore((s) => s.rows);
   const isLoaded = useExtractionStore((s) => s.isLoaded);
@@ -579,9 +580,9 @@ export default function ReclaimDashboard() {
 
       {/* Appeal Generation Modal */}
       <Dialog open={!!selectedRowId} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent className="sm:max-w-xl bg-neutral-900/60 backdrop-blur-3xl border border-white/10 text-white shadow-2xl max-h-[90dvh] overflow-y-auto pt-10">
+        <DialogContent initialFocus={() => appealTitleRef.current} className="sm:max-w-xl bg-neutral-900/60 backdrop-blur-3xl border border-white/10 text-white shadow-2xl max-h-[90dvh] overflow-y-auto pt-10">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-semibold tracking-tight mb-2">{selectedRow?.status === "completed" ? "Review Appeal" : "Generate Appeal"}</DialogTitle>
+            <DialogTitle ref={appealTitleRef} tabIndex={-1} className="text-2xl font-semibold tracking-tight mb-2 outline-none focus:outline-none focus-visible:outline-none">{selectedRow?.status === "completed" ? "Review Appeal" : "Generate Appeal"}</DialogTitle>
             <DialogDescription className="text-neutral-400">
               {selectedRow?.status === "completed" ? "This letter has already been generated." : "Paste notes below to draft an appeal. Read the letter before you use it."}
             </DialogDescription>
@@ -679,8 +680,8 @@ export default function ReclaimDashboard() {
                     </Label>
                     <p className="text-xs text-neutral-400 leading-relaxed">Copy the clinical notes for this date of service.</p>
                   </div>
-                  <div className="relative flex flex-col overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md transition-colors focus-within:border-white/40">
-                    <Textarea id="clinicalNotes" autoFocus placeholder="Paste raw notes here (Ctrl+V)..." className="min-h-[180px] resize-y border-0 bg-transparent p-4 text-base text-foreground placeholder:text-muted-foreground focus-visible:border-transparent focus-visible:ring-0 custom-scrollbar" value={clinicalNotes} onChange={(e) => setClinicalNotes(e.target.value)} />
+                  <div className="notes-shell relative flex flex-col overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md">
+                    <Textarea id="clinicalNotes" placeholder="Paste raw notes here (Ctrl+V)..." className="min-h-[180px] resize-y border-0 bg-transparent p-4 text-base text-foreground shadow-none outline-none ring-0 placeholder:text-muted-foreground focus:border-transparent focus:ring-0 focus:outline-none focus-visible:border-transparent focus-visible:ring-0 focus-visible:outline-none custom-scrollbar" value={clinicalNotes} onChange={(e) => setClinicalNotes(e.target.value)} />
                     <div className="bg-black/20 p-3 border-t border-white/5 flex flex-col gap-3 shrink-0">
                       {/* Verification Checkbox — Lockout Mechanism */}
                       <label className="flex items-center gap-3 cursor-pointer select-none group">
