@@ -12,7 +12,7 @@ export default function PrivacyPage() {
         <p>Sign-in is Google only, through Supabase. The app stores the email address and name Google sends. There is no password, no payment, and no device fingerprint.</p>
         <h2 className="pt-2 text-2xl font-semibold text-white">What happens to a file</h2>
         <p>
-          An uploaded PDF is rendered in the browser. Page images, and sometimes text taken from those pages, are sent to this app&apos;s server and then to OpenRouter. The requests do not set a zero-retention or no-training option. Do not send real patient information.
+          An uploaded PDF is rendered in the browser. Page images, and sometimes text taken from those pages, are sent to this app&apos;s server and then to whichever AI provider is configured (Gemini, Groq, or OpenRouter). The requests do not set a zero-retention or no-training option. Do not send real patient information.
         </p>
         <p>
           Denied-claim rows are saved in this browser&apos;s localStorage. They stay after you close the tab. Signing out clears them. A different Google account on the same browser does not see the previous account&apos;s rows.

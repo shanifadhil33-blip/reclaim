@@ -16,7 +16,8 @@ export async function softDeleteAppeal(appealId: string) {
     .eq("id", appealId)
     .eq("user_id", user.id);
 
-  return { success: !error, error: error?.message };
+  if (error) console.error("[HISTORY] delete failed:", error.message);
+  return { success: !error };
 }
 
 export async function clearAllHistory() {
@@ -32,5 +33,6 @@ export async function clearAllHistory() {
     .is("deleted_at", null)
     .eq("user_id", user.id);
 
-  return { success: !error, error: error?.message };
+  if (error) console.error("[HISTORY] clear failed:", error.message);
+  return { success: !error };
 }

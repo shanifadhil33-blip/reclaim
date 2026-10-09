@@ -99,7 +99,7 @@ async function extractWithModel(target: CompletionTarget, base64Images: string[]
   for (let attempt = 1; attempt <= MAX_VALIDATION_ATTEMPTS; attempt++) {
     console.log(`[EXTRACT] ${target.provider}/${target.model}, validation attempt ${attempt}/${MAX_VALIDATION_ATTEMPTS}`);
 
-    const raw = await completeChat(target, messages, { json: true, timeoutMs: 90000, maxTokens: 8000 });
+    const raw = await completeChat(target, messages, { json: true, timeoutMs: 90000, maxTokens: 4000 });
     console.log(`[EXTRACT] Raw response from ${target.model} (attempt ${attempt}): ${raw.length} chars.`);
     if (!raw) {
       throw new Error("Model returned empty response");
@@ -150,7 +150,7 @@ async function extractTextWithRetry(target: CompletionTarget, text: string): Pro
   for (let attempt = 1; attempt <= MAX_VALIDATION_ATTEMPTS; attempt++) {
     console.log(`[EXTRACT] ${target.provider}/${target.model}, validation attempt ${attempt}/${MAX_VALIDATION_ATTEMPTS}`);
 
-    const raw = await completeChat(target, messages, { json: true, timeoutMs: 60000, maxTokens: 8000 });
+    const raw = await completeChat(target, messages, { json: true, timeoutMs: 60000, maxTokens: 4000 });
     console.log(`[EXTRACT] ${target.model} response (attempt ${attempt}): ${raw.length} chars.`);
 
     const parsed = parseModelClaims(raw);

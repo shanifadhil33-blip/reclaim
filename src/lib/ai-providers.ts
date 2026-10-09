@@ -51,8 +51,8 @@ const DEFAULT_GEMINI_MODELS = [
 
 const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
 
-/** Room for Groq reasoning tokens plus the letter or JSON. */
-export const GROQ_MAX_TOKENS = 16384
+/** Room for a short Groq reasoning pass. Kept at 4000 so a reserved cap is never 16k. */
+export const GROQ_MAX_TOKENS = 4000
 
 /** Existing OpenRouter vision chain. */
 export const OPENROUTER_VISION_MODELS = [

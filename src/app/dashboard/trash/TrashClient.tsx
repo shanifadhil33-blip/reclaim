@@ -113,6 +113,17 @@ function serverItems(initialAppeals: unknown[]): TrashedItem[] {
   });
 }
 
+function AccountLoadNotice() {
+  return (
+    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+      <p>Couldn&apos;t load letters saved to your account.</p>
+      <a href="/dashboard/trash" className="mt-3 inline-flex h-11 items-center font-medium text-white">
+        Try again
+      </a>
+    </div>
+  );
+}
+
 function display(item: TrashedItem) {
   if (item.source === "supabase") {
     return {
@@ -130,7 +141,13 @@ function display(item: TrashedItem) {
   };
 }
 
-export default function TrashClient({ initialAppeals }: { initialAppeals: unknown[] }) {
+export default function TrashClient({
+  initialAppeals,
+  accountLoadFailed = false,
+}: {
+  initialAppeals: unknown[];
+  accountLoadFailed?: boolean;
+}) {
   const localItems = useSyncExternalStore(subscribeTrash, readLocalTrash, serverTrash);
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -160,10 +177,10 @@ export default function TrashClient({ initialAppeals }: { initialAppeals: unknow
       return;
     }
     setPendingId(item.id);
-    const { success, error } = await restoreAppeal(item.id);
+    const { success } = await restoreAppeal(item.id);
     setPendingId(null);
     if (!success) {
-      toast.error(error ? `Couldn't restore: ${error}` : "Couldn't restore that letter.");
+      toast.error("Couldn't restore that letter.");
       return;
     }
     setHiddenIds((current) => [...current, item.id]);
@@ -179,10 +196,10 @@ export default function TrashClient({ initialAppeals }: { initialAppeals: unknow
       return;
     }
     setPendingId(item.id);
-    const { success, error } = await permanentDeleteAppeal(item.id);
+    const { success } = await permanentDeleteAppeal(item.id);
     setPendingId(null);
     if (!success) {
-      toast.error(error ? `Couldn't delete: ${error}` : "Couldn't delete that letter.");
+      toast.error("Couldn't delete that letter.");
       return;
     }
     setHiddenIds((current) => [...current, item.id]);
@@ -196,10 +213,10 @@ export default function TrashClient({ initialAppeals }: { initialAppeals: unknow
     window.localStorage.removeItem("reclaim_eob_trash");
     window.dispatchEvent(new Event(TRASH_EVENT));
     if (saved.length > 0) {
-      const { success, error } = await emptyTrash();
+      const { success } = await emptyTrash();
       if (!success) {
         setEmptying(false);
-        toast.error(error ? `Couldn't empty the bin: ${error}` : "Couldn't empty the bin.");
+        toast.error("Couldn't empty the bin.");
         return;
       }
     }
@@ -212,15 +229,21 @@ export default function TrashClient({ initialAppeals }: { initialAppeals: unknow
 
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/5 p-10 text-center">
-        <h2 className="text-xl font-medium text-white">Recycle bin is empty</h2>
-        <p className="mx-auto mt-2 max-w-sm text-neutral-400">Deleted claims and letters show up here until you restore or delete them.</p>
+      <div className="space-y-4">
+        {accountLoadFailed ? <AccountLoadNotice /> : null}
+        {accountLoadFailed ? null : (
+          <div className="rounded-xl border border-white/10 bg-white/5 p-10 text-center">
+            <h2 className="text-xl font-medium text-white">Recycle bin is empty</h2>
+            <p className="mx-auto mt-2 max-w-sm text-neutral-400">Deleted claims and letters show up here until you restore or delete them.</p>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {accountLoadFailed ? <AccountLoadNotice /> : null}
       <div className="flex justify-end">
         <Button type="button" variant="outline" onClick={() => setEmptyOpen(true)} disabled={emptying} className="h-11 border-red-500/30 text-red-300">
           {emptying ? "Emptying…" : "Empty recycle bin"}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { PointerFocus } from "@/components/pointer-focus";
 import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
@@ -29,6 +30,7 @@ export default function RootLayout({
       className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <PointerFocus />
         {children}
         <Toaster theme="dark" richColors style={{ zIndex: 80 }} />
       </body>

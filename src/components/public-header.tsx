@@ -16,7 +16,7 @@ export function PublicHeader() {
         <Link
           href="/login"
           aria-current={onLogin ? "page" : undefined}
-          className="inline-flex h-11 items-center rounded-full bg-white px-4 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
+          className="inline-flex h-11 items-center rounded-full bg-white px-4 text-sm font-medium text-neutral-950 hover:bg-neutral-200 active:bg-neutral-300"
         >
           Sign in
         </Link>

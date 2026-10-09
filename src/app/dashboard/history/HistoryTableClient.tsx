@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import EditableLetter from "./EditableLetter";
@@ -27,24 +27,37 @@ const SORTS = [
 
 export default function HistoryTableClient({ initialAppeals }: { initialAppeals: AppealRecord[] }) {
   const [appeals, setAppeals] = useState(initialAppeals || []);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const query = searchParams.get("q") ?? "";
+  const dateFilter = searchParams.get("date") ?? "";
+  const [searchDraft, setSearchDraft] = useState(query);
   const sort = SORTS.some((item) => item.value === searchParams.get("sort"))
     ? (searchParams.get("sort") as string)
     : "newest";
 
+  useEffect(() => {
+    if (searchDraft === query) return;
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (searchDraft) params.set("q", searchDraft);
+      else params.delete("q");
+      const next = params.toString();
+      router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchDraft, query, pathname, router, searchParams]);
+
   // Filter appeals based on search term (Payer or Code) and date
   const filteredAppeals = useMemo(() => {
     const matched = appeals.filter(appeal => {
-      const searchLower = searchTerm.toLowerCase();
+      const searchLower = query.toLowerCase();
       const matchesSearch = 
-        !searchTerm || 
+        !query || 
         (appeal.insurance_company?.toLowerCase() || "").includes(searchLower) ||
         (appeal.medical_code?.toLowerCase() || "").includes(searchLower);
         
@@ -62,7 +75,7 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
       return sort === "oldest" ? aTime - bTime : bTime - aTime;
     });
     return matched;
-  }, [appeals, searchTerm, dateFilter, sort]);
+  }, [appeals, query, dateFilter, sort]);
 
   const setSort = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -147,7 +160,7 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
       toast.success(`Successfully exported ${selectedAppeals.length} appeals.`);
     } catch (error: unknown) {
       console.error("ZIP Export Error:", error);
-      toast.error(error instanceof Error ? `Failed to export files. ${error.message}` : "Failed to export files.");
+      toast.error("Couldn't download those letters. Try again.");
     } finally {
       setIsExporting(false);
     }
@@ -188,8 +201,9 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
             <Input 
               type="text" 
               placeholder="Search by Payer or Code..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchDraft}
+              onChange={(e) => setSearchDraft(e.target.value)}
+              aria-label="Search letters"
               className="bg-neutral-950/50 border-white/10 text-white placeholder:text-neutral-500"
             />
           </div>
@@ -197,7 +211,14 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
             <Input 
               type="date" 
               value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
+              aria-label="Filter by date"
+              onChange={(e) => {
+                const params = new URLSearchParams(searchParams.toString());
+                if (e.target.value) params.set("date", e.target.value);
+                else params.delete("date");
+                const next = params.toString();
+                router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+              }}
               onClick={(e) => {
                 const target = e.target as HTMLInputElement;
                 if (target.showPicker) target.showPicker();
@@ -220,7 +241,7 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
 
       {/* Selection Mode Action Bar */}
       {isSelectionMode && (
-        <div className="sticky top-4 z-10 bg-neutral-900/80 border border-white/10 backdrop-blur-2xl rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 fade-in">
+        <div className="sticky top-4 z-10 flex flex-col items-center justify-between gap-4 rounded-2xl border border-white/10 bg-neutral-900/80 p-4 backdrop-blur-2xl sm:flex-row">
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-3 cursor-pointer hover:text-white transition-colors text-sm text-neutral-400">
               <input 
@@ -243,14 +264,14 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
                 onClick={handleBulkDownload}
                 disabled={isExporting}
                 size="sm"
-                className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-8 px-4"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm h-11 px-4"
               >
                 {isExporting ? "Bundling..." : `Download ${selectedIds.size} (.zip)`}
               </Button>
             )}
             <button
               onClick={() => { setIsSelectionMode(false); setSelectedIds(new Set()); }}
-              className="text-xs text-neutral-400 hover:text-white transition-colors border border-white/10 rounded-lg px-3 py-1.5 hover:bg-white/5"
+              className="inline-flex h-11 items-center rounded-lg border border-white/10 px-4 text-sm text-neutral-300 hover:bg-white/5 hover:text-white"
             >
               Cancel
             </button>
@@ -266,7 +287,7 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
       {/* Data List */}
       <div className="space-y-4">
         {filteredAppeals.map((appeal) => (
-          <div key={appeal.id} className={`bg-white/5 backdrop-blur-md border rounded-2xl overflow-hidden transition-all duration-300 ease-in-out hover:bg-white/10 ${selectedIds.has(appeal.id) ? 'border-indigo-500/50' : 'border-white/10'}`}>
+          <div key={appeal.id} className={`bg-white/5 backdrop-blur-md border rounded-2xl overflow-hidden transition-colors duration-150 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/10 ${selectedIds.has(appeal.id) ? 'border-indigo-500/50' : 'border-white/10'}`}>
             <div className="p-5 border-b border-white/5 flex flex-wrap gap-x-8 gap-y-4 items-center justify-between">
               
               <div className="flex items-center gap-4">
@@ -311,7 +332,7 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
             </div>
             
             <details className="group">
-              <summary className="p-4 cursor-pointer text-sm font-medium text-indigo-400 hover:bg-white/10 transition-all duration-300 ease-in-out flex items-center justify-between list-none pl-12">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between p-4 pl-12 text-sm font-medium text-indigo-300 transition-colors duration-150 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/10">
                 View Generated Appeal Letter
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open:rotate-180"><path d="m6 9 6 6 6-6"/></svg>
               </summary>
@@ -333,8 +354,12 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
             <button
               type="button"
               onClick={() => {
-                setSearchTerm("");
-                setDateFilter("");
+                setSearchDraft("");
+                const params = new URLSearchParams(searchParams.toString());
+                params.delete("q");
+                params.delete("date");
+                const next = params.toString();
+                router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
               }}
               className="mt-4 inline-flex h-11 items-center rounded-lg border border-white/15 px-4 text-sm text-white"
             >

@@ -48,6 +48,7 @@ function DemoScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [resetOpen, setResetOpen] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   const rows = useMemo(() => {
     const filtered = DEMO_CLAIMS.filter((row) => status === "all" || row.status === status);
@@ -65,10 +66,15 @@ function DemoScreen() {
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
 
-  function copyLetter() {
+  async function copyLetter() {
     if (!letter) return;
-    void navigator.clipboard.writeText(letter);
-    toast.success("Copied the fictional letter.");
+    try {
+      await navigator.clipboard.writeText(letter);
+      setCopyState("copied");
+      window.setTimeout(() => setCopyState("idle"), 1500);
+    } catch {
+      setCopyState("failed");
+    }
   }
 
   function downloadLetter(row: DenialRow) {
@@ -132,8 +138,11 @@ function DemoScreen() {
               <li key={row.id}>
                 <button
                   type="button"
-                  onClick={() => setSelectedId(row.id)}
-                  className="flex w-full flex-col gap-2 px-4 py-4 text-left hover:bg-white/5 sm:flex-row sm:items-center sm:justify-between"
+                  onClick={() => {
+                    setCopyState("idle");
+                    setSelectedId(row.id);
+                  }}
+                  className="flex min-h-11 w-full flex-col gap-2 px-4 py-4 text-left sm:flex-row sm:items-center sm:justify-between [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/5"
                 >
                   <span className="min-w-0">
                     <span className="block font-medium text-white">{row.patientName}</span>
@@ -202,8 +211,8 @@ function DemoScreen() {
                 />
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <Button type="button" onClick={copyLetter} className="h-11 bg-indigo-600 text-white hover:bg-indigo-500">
-                  Copy letter
+                <Button type="button" onClick={() => { void copyLetter(); }} className="h-11 bg-indigo-600 text-white hover:bg-indigo-500">
+                  {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy letter"}
                 </Button>
                 <Button
                   type="button"
