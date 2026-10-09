@@ -6,6 +6,7 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { create } from "zustand";
 import { toast } from "sonner";
+import { dedupeAgainstWorklist, duplicateWorklistNotice } from "@/lib/worklist-dedupe";
 
 type ClaimStatus = "needs_notes" | "completed";
 
@@ -30,6 +31,7 @@ interface ExtractionState {
   // ── Data ──
   rows: DenialRow[];
   isLoaded: boolean;
+  duplicateNotice: string;
 
   // ── Queue ──
   queuedFiles: File[];
@@ -132,6 +134,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
   // ── Initial state ──
   rows: [],
   isLoaded: false,
+  duplicateNotice: "",
   queuedFiles: [],
   isExtracting: false,
   extractionProgress: "",
@@ -210,6 +213,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
 
     set({
       isExtracting: true,
+      duplicateNotice: "",
       extractionProgress: "Loading PDF engine...",
       extractionPhase: "Preparing...",
       progressPercent: 0,
@@ -218,6 +222,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
     });
 
       let totalDenialsFound = 0;
+      let alreadyListed = 0;
       const extractionWarnings: string[] = [];
 
     try {
@@ -448,15 +453,19 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
           pagesFullyProcessed += chunkPageCount;
           updateProgress(pagesFullyProcessed);
 
-          // Step 4: Append results progressively
+          // Step 4: Append lines that are not already on the worklist
           if (newRows.length > 0) {
-            const updated = [...get().rows, ...newRows];
-            set({ rows: updated });
-            saveRows(updated);
-            totalDenialsFound += newRows.length;
-            toast.success(
-              `Found ${newRows.length} denial(s) in pages ${chunkStart}-${chunkEnd}`
-            );
+            const { fresh, alreadyThere } = dedupeAgainstWorklist(get().rows, newRows);
+            alreadyListed += alreadyThere;
+            if (fresh.length > 0) {
+              const updated = [...get().rows, ...fresh];
+              set({ rows: updated });
+              saveRows(updated);
+              totalDenialsFound += fresh.length;
+              toast.success(
+                `Found ${fresh.length} denial(s) in pages ${chunkStart}-${chunkEnd}`
+              );
+            }
           }
 
           // Step 5: Free memory
@@ -467,13 +476,14 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
       }
 
       // Done
-      set({ progressPercent: 100, queuedFiles: [] });
+      const duplicateNotice = alreadyListed > 0 ? duplicateWorklistNotice(alreadyListed) : "";
+      set({ progressPercent: 100, queuedFiles: [], duplicateNotice });
 
       if (totalDenialsFound > 0) {
         toast.success(
           `Done! Found ${totalDenialsFound} denied claim(s) across ${grandTotalPages} pages.`
         );
-      } else {
+      } else if (alreadyListed === 0) {
         const detail = [...new Set(extractionWarnings)].slice(0, 3).join(" ");
         toast.warning(
           detail
@@ -481,6 +491,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
             : "No denied claims found in any of the uploaded EOBs."
         );
       }
+      if (duplicateNotice) toast(duplicateNotice);
     } catch (err: unknown) {
       console.error("[PIPELINE FATAL]", err);
       toast.error(errorText(err) || "Failed to process PDFs. Please try again.");
