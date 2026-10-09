@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
+  AI_EXTRACT_FAILED,
+  AI_NOT_CONFIGURED,
+  completeChat,
+  ProviderRequestError,
+  targetsFor,
+  type ChatMessage,
+  type ChatPart,
+  type CompletionTarget,
+} from "@/lib/ai-providers";
+import {
   parseEobText,
   parseModelClaims,
   plainExtractWarning,
@@ -13,25 +23,21 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : "Unknown failure";
 }
 
+function safeAttemptError(model: string, error: unknown): string {
+  if (error instanceof ProviderRequestError) return error.message;
+  const message = error instanceof Error ? error.message : "failed";
+  if (/empty response|did not return a list|DENIED lines/i.test(message)) {
+    return message.startsWith(model) ? message : `${model}: ${message}`;
+  }
+  return message.startsWith(`${model}:`) ? message : `${model}: failed`;
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   if (typeof value === "object" && value !== null && !Array.isArray(value)) {
     return value as Record<string, unknown>;
   }
   return {};
 }
-
-type ChatMessage = {
-  role: "system" | "user" | "assistant";
-  content: string | Array<Record<string, unknown>>;
-};
-
-type CompletionRequest = {
-  model: string;
-  messages: ChatMessage[];
-  temperature: number;
-  max_tokens: number;
-  response_format?: { type: "json_object" };
-};
 
 const CLAIM_SHAPE = `{
   "claims": [
@@ -59,37 +65,19 @@ ${CLAIM_SHAPE}
 If there are no denials, return {"claims":[]}.
 Every value is a string. Dates are MM/DD/YYYY. Amounts include a dollar sign. Do not use markdown.`
 
-const VISION_MODELS = [
-  "google/gemini-2.5-flash",
-  "google/gemini-2.5-flash-lite",
-  "google/gemma-4-26b-a4b-it:free",
-  "meta-llama/llama-4-scout",
-]
-
-const TEXT_MODELS = [
-  "google/gemini-2.5-flash",
-  "google/gemini-2.5-flash-lite",
-  "meta-llama/llama-3.3-70b-instruct",
-]
-
-const JSON_MODE_MODELS = new Set([
-  "google/gemini-2.5-flash",
-  "google/gemini-2.5-flash-lite",
-])
-
 const MAX_VALIDATION_ATTEMPTS = 3
 
 /**
  * Extract with self-correction retry loop.
  * Attempts up to MAX_VALIDATION_ATTEMPTS times, feeding Zod errors back to the LLM.
  */
-async function extractWithModel(model: string, base64Images: string[], apiKey: string): Promise<{
+async function extractWithModel(target: CompletionTarget, base64Images: string[]): Promise<{
   claims: DeniedClaim[];
   validationAttempts: number;
 }> {
-  console.log(`[EXTRACT] Trying model: ${model} with ${base64Images.length} pages`);
+  console.log(`[EXTRACT] Trying ${target.provider}/${target.model} with ${base64Images.length} pages`);
 
-  const imageContent: Array<Record<string, unknown>> = base64Images.map((img) => ({
+  const imageContent: ChatPart[] = base64Images.map((img) => ({
     type: "image_url",
     image_url: {
       url: img.startsWith("data:") ? img : `data:image/png;base64,${img}`,
@@ -108,83 +96,33 @@ async function extractWithModel(model: string, base64Images: string[], apiKey: s
     },
   ];
 
-  const supportsJsonMode = JSON_MODE_MODELS.has(model);
-
   for (let attempt = 1; attempt <= MAX_VALIDATION_ATTEMPTS; attempt++) {
-    console.log(`[EXTRACT] Model ${model}, validation attempt ${attempt}/${MAX_VALIDATION_ATTEMPTS}`);
+    console.log(`[EXTRACT] ${target.provider}/${target.model}, validation attempt ${attempt}/${MAX_VALIDATION_ATTEMPTS}`);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 90000);
+    const raw = await completeChat(target, messages, { json: true, timeoutMs: 90000, maxTokens: 8000 });
+    console.log(`[EXTRACT] Raw response from ${target.model} (attempt ${attempt}): ${raw.length} chars.`);
+    if (!raw) {
+      throw new Error("Model returned empty response");
+    }
 
-    try {
-      const requestBody: CompletionRequest = {
-        model,
-        messages,
-        temperature: 0.1,
-        max_tokens: 8000,
-      };
-
-      if (supportsJsonMode) {
-        requestBody.response_format = { type: "json_object" };
-      }
-
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        signal: controller.signal,
-        body: JSON.stringify(requestBody),
+    const parsed = parseModelClaims(raw);
+    if (parsed.claims.length > 0) {
+      console.log(`[EXTRACT] ${target.model} returned ${parsed.claims.length} denials on attempt ${attempt}.`);
+      return { claims: parsed.claims, validationAttempts: attempt };
+    }
+    if (!parsed.warning) {
+      console.log(`[EXTRACT] ${target.model} returned no denials.`);
+      return { claims: [], validationAttempts: attempt };
+    }
+    console.warn(`[EXTRACT] ${target.model} attempt ${attempt}: ${parsed.warning}`);
+    if (attempt < MAX_VALIDATION_ATTEMPTS) {
+      messages.push({ role: "assistant", content: raw });
+      messages.push({
+        role: "user",
+        content: `${parsed.warning} Return {"claims":[...]} with one object per DENIED line. Skip PAID lines. Use strings for all nine fields.`,
       });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorBody.substring(0, 300)}`);
-      }
-
-      const completion = await response.json();
-
-      if (completion.error) {
-        throw new Error(completion.error.message || "Unknown API error");
-      }
-
-      if (!completion.choices?.length) {
-        throw new Error("No choices returned from model");
-      }
-
-      const raw = completion.choices[0]?.message?.content?.trim() || "";
-      console.log(`[EXTRACT] Raw response from ${model} (attempt ${attempt}): ${raw.length} chars.`);
-      if (!raw) {
-        throw new Error("Model returned empty response");
-      }
-
-      const parsed = parseModelClaims(raw);
-      if (parsed.claims.length > 0) {
-        console.log(`[EXTRACT] ${model} returned ${parsed.claims.length} denials on attempt ${attempt}.`);
-        return { claims: parsed.claims, validationAttempts: attempt };
-      }
-      if (!parsed.warning) {
-        console.log(`[EXTRACT] ${model} returned no denials.`);
-        return { claims: [], validationAttempts: attempt };
-      }
-      console.warn(`[EXTRACT] ${model} attempt ${attempt}: ${parsed.warning}`);
-      if (attempt < MAX_VALIDATION_ATTEMPTS) {
-        messages.push({ role: "assistant", content: raw });
-        messages.push({
-          role: "user",
-          content: `${parsed.warning} Return {"claims":[...]} with one object per DENIED line. Skip PAID lines. Use strings for all nine fields.`,
-        });
-      } else {
-        throw new Error(parsed.warning);
-      }
-    } catch (error: unknown) {
-      clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === "AbortError") {
-        throw new Error(`${model} timed out after 90 seconds`);
-      }
-      throw error;
+    } else {
+      throw new Error(parsed.warning);
     }
   }
 
@@ -195,11 +133,11 @@ async function extractWithModel(model: string, base64Images: string[], apiKey: s
 /**
  * Text-mode extraction with self-correction retry loop.
  */
-async function extractTextWithRetry(model: string, text: string, apiKey: string): Promise<{
+async function extractTextWithRetry(target: CompletionTarget, text: string): Promise<{
   claims: DeniedClaim[];
   validationAttempts: number;
 }> {
-  console.log(`[EXTRACT] Trying text model: ${model}`);
+  console.log(`[EXTRACT] Trying ${target.provider}/${target.model}`);
 
   const messages: ChatMessage[] = [
     { role: "system", content: EXTRACTION_SYSTEM_PROMPT },
@@ -209,75 +147,31 @@ async function extractTextWithRetry(model: string, text: string, apiKey: string)
     },
   ];
 
-  const supportsJsonMode = JSON_MODE_MODELS.has(model);
-
   for (let attempt = 1; attempt <= MAX_VALIDATION_ATTEMPTS; attempt++) {
-    console.log(`[EXTRACT] Text model ${model}, validation attempt ${attempt}/${MAX_VALIDATION_ATTEMPTS}`);
+    console.log(`[EXTRACT] ${target.provider}/${target.model}, validation attempt ${attempt}/${MAX_VALIDATION_ATTEMPTS}`);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const raw = await completeChat(target, messages, { json: true, timeoutMs: 60000, maxTokens: 8000 });
+    console.log(`[EXTRACT] ${target.model} response (attempt ${attempt}): ${raw.length} chars.`);
 
-    try {
-      const requestBody: CompletionRequest = {
-        model,
-        messages,
-        temperature: 0.1,
-        max_tokens: 8000,
-      };
-
-      if (supportsJsonMode) {
-        requestBody.response_format = { type: "json_object" };
-      }
-
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        signal: controller.signal,
-        body: JSON.stringify(requestBody),
+    const parsed = parseModelClaims(raw);
+    const missedDenial = parsed.claims.length === 0 && /\bDENIED\b/i.test(text);
+    if (parsed.claims.length > 0) {
+      console.log(`[EXTRACT] ${target.model} returned ${parsed.claims.length} denials.`);
+      return { claims: parsed.claims, validationAttempts: attempt };
+    }
+    if (!parsed.warning && !missedDenial) {
+      return { claims: [], validationAttempts: attempt };
+    }
+    const problem = parsed.warning || "The page text contains DENIED lines, and the model returned none.";
+    console.warn(`[EXTRACT] ${target.model} attempt ${attempt}: ${problem}`);
+    if (attempt < MAX_VALIDATION_ATTEMPTS) {
+      messages.push({ role: "assistant", content: raw });
+      messages.push({
+        role: "user",
+        content: `${problem} Return {"claims":[...]} for each DENIED line only. Skip PAID lines.`,
       });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errBody = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errBody.substring(0, 200)}`);
-      }
-
-      const completion = await response.json();
-      if (completion.error) throw new Error(completion.error.message);
-      if (!completion.choices?.length) throw new Error("No choices returned");
-
-      const raw = completion.choices[0]?.message?.content?.trim() || "";
-      console.log(`[EXTRACT] Text model ${model} response (attempt ${attempt}): ${raw.length} chars.`);
-
-      const parsed = parseModelClaims(raw);
-      const missedDenial = parsed.claims.length === 0 && /\bDENIED\b/i.test(text);
-      if (parsed.claims.length > 0) {
-        console.log(`[EXTRACT] Text model ${model} returned ${parsed.claims.length} denials.`);
-        return { claims: parsed.claims, validationAttempts: attempt };
-      }
-      if (!parsed.warning && !missedDenial) {
-        return { claims: [], validationAttempts: attempt };
-      }
-      const problem = parsed.warning || "The page text contains DENIED lines, and the model returned none.";
-      console.warn(`[EXTRACT] Text model ${model} attempt ${attempt}: ${problem}`);
-      if (attempt < MAX_VALIDATION_ATTEMPTS) {
-        messages.push({ role: "assistant", content: raw });
-        messages.push({
-          role: "user",
-          content: `${problem} Return {"claims":[...]} for each DENIED line only. Skip PAID lines.`,
-        });
-      } else {
-        throw new Error(problem);
-      }
-    } catch (error: unknown) {
-      clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === "AbortError") {
-        throw new Error(`${model} timed out after 60 seconds`);
-      }
-      throw error;
+    } else {
+      throw new Error(problem);
     }
   }
 
@@ -325,30 +219,30 @@ export async function POST(req: Request) {
       }
     }
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (deniedClaims.length === 0 && !apiKey) {
-      return NextResponse.json({ error: "API misconfigured. Missing OPENROUTER_API_KEY." }, { status: 500 });
+    const targets = targetsFor(isTextMode ? "text" : "vision");
+    if (deniedClaims.length === 0 && targets.length === 0) {
+      return NextResponse.json({ error: AI_NOT_CONFIGURED }, { status: 500 });
     }
 
-    // ── TEXT MODE: send raw PDF text to a text-based LLM ──
-    if (deniedClaims.length === 0 && isTextMode && apiKey) {
+    // ── TEXT MODE: send raw PDF text to a text model ──
+    if (deniedClaims.length === 0 && isTextMode) {
       console.log(`[EXTRACT] TEXT MODE — ${text.length} chars from user ${user.id}`);
 
-      for (const model of TEXT_MODELS) {
+      for (const target of targets) {
         try {
-          const result = await extractTextWithRetry(model, text, apiKey);
+          const result = await extractTextWithRetry(target, text);
           deniedClaims = result.claims;
           totalValidationAttempts = result.validationAttempts;
           console.log(`[EXTRACT] Text mode parsed ${deniedClaims.length} claims (validated in ${totalValidationAttempts} attempt(s))`);
           break;
         } catch (err: unknown) {
-          console.warn(`[EXTRACT] Text model ${model} failed: ${errorText(err)}`);
-          errors.push(`${model}: ${errorText(err)}`);
+          console.warn(`[EXTRACT] ${target.provider}/${target.model} failed`);
+          errors.push(safeAttemptError(target.model, err));
         }
       }
     }
-    // ── VISION MODE: send rendered images to a vision-capable LLM ──
-    else if (deniedClaims.length === 0 && apiKey) {
+    // ── VISION MODE: send rendered images to a vision-capable model ──
+    else if (deniedClaims.length === 0) {
       console.log(`[EXTRACT] VISION MODE — ${images.length} pages from user ${user.id}`);
       console.log(`[EXTRACT] Total payload size: ~${Math.round(JSON.stringify(images).length / 1024 / 1024)}MB`);
 
@@ -364,17 +258,17 @@ export async function POST(req: Request) {
       const batch = batches[batchIndex];
       let batchSuccess = false;
 
-      for (const model of VISION_MODELS) {
+      for (const target of targets) {
         try {
-          const result = await extractWithModel(model, batch, apiKey);
+          const result = await extractWithModel(target, batch);
           deniedClaims = [...deniedClaims, ...result.claims];
           totalValidationAttempts = Math.max(totalValidationAttempts, result.validationAttempts);
           batchSuccess = true;
-          console.log(`[EXTRACT] Batch ${batchIndex + 1}/${batches.length} succeeded with ${model}: ${result.claims.length} claims (validated in ${result.validationAttempts} attempt(s))`);
+          console.log(`[EXTRACT] Batch ${batchIndex + 1}/${batches.length} succeeded with ${target.provider}/${target.model}: ${result.claims.length} claims (validated in ${result.validationAttempts} attempt(s))`);
           break;
         } catch (err: unknown) {
-          console.warn(`[EXTRACT] ${model} failed on batch ${batchIndex + 1}: ${errorText(err)}`);
-          errors.push(`Batch ${batchIndex + 1} — ${model}: ${errorText(err)}`);
+          console.warn(`[EXTRACT] ${target.provider}/${target.model} failed on batch ${batchIndex + 1}`);
+          errors.push(`Batch ${batchIndex + 1} — ${safeAttemptError(target.model, err)}`);
         }
       }
 
@@ -417,7 +311,7 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     console.error("[EXTRACT FATAL]", error);
     return NextResponse.json(
-      { error: `Internal Server Error: ${errorText(error)}` },
+      { error: AI_EXTRACT_FAILED },
       { status: 500 }
     );
   }
