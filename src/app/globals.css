@@ -204,13 +204,8 @@ input[type="checkbox"]:disabled {
 }
 
 input[type="checkbox"]:focus-visible {
-  outline: 2px solid rgba(99, 102, 241, 0.65);
+  outline: 1px solid rgba(255, 255, 255, 0.45);
   outline-offset: 2px;
-}
-
-/* Date inputs inherit light scheme unless forced dark */
-input[type="date"] {
-  color-scheme: dark;
 }
 
 html {
@@ -224,14 +219,34 @@ html {
 }
 
 :focus-visible {
-  outline: 1px solid rgba(165, 180, 252, 0.7);
+  outline: 1px solid rgba(255, 255, 255, 0.4);
   outline-offset: 2px;
 }
 
 html.using-pointer :focus,
-html.using-pointer :focus-visible {
+html.using-pointer :focus-visible,
+[data-slot="dialog-content"]:focus,
+[data-slot="dialog-content"]:focus-visible,
+[data-option-trigger]:focus,
+[data-option-trigger]:focus-visible,
+[role="option"]:focus,
+[role="option"]:focus-visible {
   outline: none !important;
   box-shadow: none !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: rgba(255, 255, 255, 0.42);
+}
+
+textarea.border-0:focus,
+textarea.border-0:focus-visible {
+  border-color: transparent;
 }
 
 @media (hover: none), (pointer: coarse) {
