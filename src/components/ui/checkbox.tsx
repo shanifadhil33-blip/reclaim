@@ -21,7 +21,7 @@ function Checkbox({
       checked={checked}
       onCheckedChange={(val) => onCheckedChange?.(val)}
       className={cn(
-        "peer h-[18px] w-[18px] shrink-0 rounded-[4px] border border-border bg-input/30 text-primary-foreground ring-offset-background transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-45 disabled:border-border/50 data-[checked]:bg-primary data-[checked]:border-primary",
+        "peer h-[18px] w-[18px] shrink-0 rounded-[4px] border border-border bg-input/30 text-primary-foreground cursor-pointer outline-none focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-45 disabled:border-border/50 data-[checked]:bg-primary data-[checked]:border-primary",
         className
       )}
       {...props}

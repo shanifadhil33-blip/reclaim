@@ -25,6 +25,27 @@ const SORTS = [
   { value: "payer", label: "Payer name" },
 ];
 
+const DATE_RANGES = [
+  { value: "any", label: "Any time" },
+  { value: "today", label: "Today" },
+  { value: "7d", label: "Last 7 days" },
+  { value: "30d", label: "Last 30 days" },
+];
+
+function matchesCreatedRange(createdAt: string, range: string): boolean {
+  if (!range || range === "any") return true;
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return false;
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (range === "today") return created >= startOfToday;
+  const days = range === "7d" ? 7 : range === "30d" ? 30 : 0;
+  if (!days) return true;
+  const start = new Date(startOfToday);
+  start.setDate(start.getDate() - (days - 1));
+  return created >= start;
+}
+
 export default function HistoryTableClient({ initialAppeals }: { initialAppeals: AppealRecord[] }) {
   const [appeals, setAppeals] = useState(initialAppeals || []);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -34,7 +55,8 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const query = searchParams.get("q") ?? "";
-  const dateFilter = searchParams.get("date") ?? "";
+  const dateParam = searchParams.get("date") ?? "";
+  const dateFilter = DATE_RANGES.some((item) => item.value === dateParam) ? dateParam : "any";
   const [searchDraft, setSearchDraft] = useState(query);
   const sort = SORTS.some((item) => item.value === searchParams.get("sort"))
     ? (searchParams.get("sort") as string)
@@ -61,8 +83,7 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
         (appeal.insurance_company?.toLowerCase() || "").includes(searchLower) ||
         (appeal.medical_code?.toLowerCase() || "").includes(searchLower);
         
-      const appealDate = new Date(appeal.created_at).toISOString().split('T')[0];
-      const matchesDate = !dateFilter || appealDate === dateFilter;
+      const matchesDate = matchesCreatedRange(appeal.created_at, dateFilter);
 
       return matchesSearch && matchesDate;
     });
@@ -76,6 +97,14 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
     });
     return matched;
   }, [appeals, query, dateFilter, sort]);
+
+  const setDateFilter = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (!value || value === "any") params.delete("date");
+    else params.set("date", value);
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  };
 
   const setSort = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -207,25 +236,13 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
               className="bg-neutral-950/50 border-white/10 text-white placeholder:text-neutral-500"
             />
           </div>
-          <div className="w-full sm:w-48 shrink-0">
-            <Input 
-              type="date" 
-              value={dateFilter}
-              aria-label="Filter by date"
-              onChange={(e) => {
-                const params = new URLSearchParams(searchParams.toString());
-                if (e.target.value) params.set("date", e.target.value);
-                else params.delete("date");
-                const next = params.toString();
-                router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
-              }}
-              onClick={(e) => {
-                const target = e.target as HTMLInputElement;
-                if (target.showPicker) target.showPicker();
-              }}
-              className="bg-neutral-950/50 border-white/10 text-white placeholder:text-neutral-500 [color-scheme:dark] cursor-pointer"
-            />
-          </div>
+          <OptionMenu
+            label="Date"
+            value={dateFilter}
+            options={DATE_RANGES}
+            onChange={setDateFilter}
+            widthClass="w-[11.5rem]"
+          />
           {!isSelectionMode && (
             <Button
               variant="outline"
@@ -332,7 +349,7 @@ export default function HistoryTableClient({ initialAppeals }: { initialAppeals:
             </div>
             
             <details className="group">
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between p-4 pl-12 text-sm font-medium text-indigo-300 transition-colors duration-150 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/10">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between p-4 pl-12 text-sm font-medium text-emerald-300 transition-colors duration-150 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/10 hover:text-emerald-200">
                 View Generated Appeal Letter
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open:rotate-180"><path d="m6 9 6 6 6-6"/></svg>
               </summary>

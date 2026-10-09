@@ -599,7 +599,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editPatientAccount}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditPatientAccount(e.target.value)}
-                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus-visible:border-ring"
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus-visible:border-white/40 focus-visible:ring-0"
                     />
                   </div>
                   <div className="space-y-1">
@@ -607,7 +607,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editPatientName}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditPatientName(e.target.value)}
-                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus-visible:border-ring"
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus-visible:border-white/40 focus-visible:ring-0"
                     />
                   </div>
                   <div className="space-y-1">
@@ -615,7 +615,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editDateOfService}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditDateOfService(e.target.value)}
-                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus-visible:border-ring"
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus-visible:border-white/40 focus-visible:ring-0"
                     />
                   </div>
                   <div className="space-y-1">
@@ -623,7 +623,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editBilledCPT}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditBilledCPT(e.target.value)}
-                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 font-mono focus-visible:border-ring"
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 font-mono focus-visible:border-white/40 focus-visible:ring-0"
                     />
                   </div>
                   <div className="space-y-1">
@@ -631,7 +631,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editDenialCode}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditDenialCode(e.target.value)}
-                      className="bg-white/5 border-white/10 text-red-400 text-sm h-9 font-mono focus-visible:border-ring"
+                      className="bg-white/5 border-white/10 text-red-400 text-sm h-9 font-mono focus-visible:border-white/40 focus-visible:ring-0"
                     />
                   </div>
                   <div className="space-y-1">
@@ -639,7 +639,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editPayerName}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditPayerName(e.target.value)}
-                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus-visible:border-ring"
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 focus-visible:border-white/40 focus-visible:ring-0"
                     />
                   </div>
                   <div className="space-y-1">
@@ -647,7 +647,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editBilledAmount}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditBilledAmount(e.target.value)}
-                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 font-mono focus-visible:border-ring"
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 font-mono focus-visible:border-white/40 focus-visible:ring-0"
                     />
                   </div>
                   <div className="space-y-1">
@@ -655,7 +655,7 @@ export default function ReclaimDashboard() {
                     <Input
                       value={editPaidAmount}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditPaidAmount(e.target.value)}
-                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 font-mono focus-visible:border-ring"
+                      className="bg-white/5 border-white/10 text-neutral-200 text-sm h-9 font-mono focus-visible:border-white/40 focus-visible:ring-0"
                     />
                   </div>
                 </div>
@@ -664,7 +664,7 @@ export default function ReclaimDashboard() {
                   <Textarea
                     value={editDenialReason}
                     onChange={(e) => setEditDenialReason(e.target.value)}
-                    className="bg-white/5 border-white/10 text-neutral-300 text-sm min-h-[60px] resize-y focus-visible:border-ring"
+                    className="bg-white/5 border-white/10 text-neutral-300 text-sm min-h-[60px] resize-y focus-visible:border-white/40 focus-visible:ring-0"
                     rows={2}
                   />
                 </div>
@@ -679,8 +679,8 @@ export default function ReclaimDashboard() {
                     </Label>
                     <p className="text-xs text-neutral-400 leading-relaxed">Copy the clinical notes for this date of service.</p>
                   </div>
-                  <div className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-xl focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all overflow-hidden flex flex-col">
-                    <Textarea id="clinicalNotes" autoFocus placeholder="Paste raw notes here (Ctrl+V)..." className="min-h-[180px] bg-transparent border-0 text-foreground placeholder:text-muted-foreground focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-ring/40 resize-y text-base p-4 custom-scrollbar" value={clinicalNotes} onChange={(e) => setClinicalNotes(e.target.value)} />
+                  <div className="relative flex flex-col overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md transition-colors focus-within:border-white/40">
+                    <Textarea id="clinicalNotes" autoFocus placeholder="Paste raw notes here (Ctrl+V)..." className="min-h-[180px] resize-y border-0 bg-transparent p-4 text-base text-foreground placeholder:text-muted-foreground focus-visible:border-transparent focus-visible:ring-0 custom-scrollbar" value={clinicalNotes} onChange={(e) => setClinicalNotes(e.target.value)} />
                     <div className="bg-black/20 p-3 border-t border-white/5 flex flex-col gap-3 shrink-0">
                       {/* Verification Checkbox — Lockout Mechanism */}
                       <label className="flex items-center gap-3 cursor-pointer select-none group">

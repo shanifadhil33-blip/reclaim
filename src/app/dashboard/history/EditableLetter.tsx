@@ -139,7 +139,7 @@ export default function EditableLetter({
       <textarea
         value={letterContent}
         onChange={(e) => setLetterContent(e.target.value)}
-        className="w-full min-h-[400px] bg-neutral-950/80 border border-indigo-500/20 text-white p-4 rounded-lg text-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-indigo-500/50 resize-y custom-scrollbar"
+        className="w-full min-h-[400px] resize-y rounded-lg border border-white/15 bg-neutral-950/80 p-4 text-sm leading-relaxed text-white outline-none focus:border-white/40 focus:outline-none focus:ring-0 custom-scrollbar"
       />
     </div>
   );

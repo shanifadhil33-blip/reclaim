@@ -34,11 +34,8 @@ export function OptionMenu({
       const rect = buttonRef.current?.getBoundingClientRect();
       if (!rect) return;
       const width = rect.width;
-      const menuHeight = Math.min(options.length * 44 + 8, 280);
-      const below = rect.bottom + 6;
-      const top = below + menuHeight > window.innerHeight - 8 ? Math.max(8, rect.top - menuHeight - 6) : below;
-      const left = Math.min(rect.left, window.innerWidth - width - 8);
-      setBox({ top, left: Math.max(8, left), width });
+      const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8);
+      setBox({ top: rect.bottom + 4, left, width });
     };
     place();
     const onKey = (event: KeyboardEvent) => {
@@ -59,18 +56,19 @@ export function OptionMenu({
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
     };
-  }, [open, options.length]);
+  }, [open]);
 
   return (
     <div className={widthClass}>
       <button
         ref={buttonRef}
         type="button"
+        data-option-trigger=""
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
         onClick={() => setOpen((currentOpen) => !currentOpen)}
-        className={`${widthClass} relative flex h-11 items-center rounded-lg border border-white/15 bg-neutral-900 px-3 pr-8 text-left text-sm text-white`}
+        className={`${widthClass} relative flex h-11 items-center rounded-lg border border-white/15 bg-neutral-900 px-3 pr-8 text-left text-sm text-white outline-none`}
       >
         <span className="sr-only">{label}: </span>
         <span className="truncate">{current?.label}</span>
@@ -86,7 +84,7 @@ export function OptionMenu({
               id={listId}
               role="listbox"
               aria-label={label}
-              className="fixed z-[60] overflow-hidden rounded-lg border border-white/15 bg-neutral-900 py-1 shadow-2xl"
+              className="fixed z-[80] overflow-hidden rounded-lg border border-white/15 bg-neutral-900 py-1 shadow-2xl"
               style={{ top: box.top, left: box.left, width: box.width }}
             >
               {options.map((option) => {
@@ -101,7 +99,7 @@ export function OptionMenu({
                       onChange(option.value);
                       setOpen(false);
                     }}
-                    className="flex h-11 w-full items-center justify-between gap-2 px-3 text-left text-sm text-neutral-100 hover:bg-white/10"
+                    className="flex h-11 w-full items-center justify-between gap-2 px-3 text-left text-sm text-neutral-100 outline-none hover:bg-white/10"
                   >
                     <span className="truncate">{option.label}</span>
                     {selected ? <span aria-hidden="true">✓</span> : <span className="w-3" />}
