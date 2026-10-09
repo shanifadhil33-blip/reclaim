@@ -40,6 +40,7 @@ function timeAgo(isoString: string): string {
 export default function ReclaimDashboard() {
   // ── Store (survives navigation) ──
   const rows = useExtractionStore((s) => s.rows);
+  const duplicateNotice = useExtractionStore((s) => s.duplicateNotice);
   const setRows = useExtractionStore((s) => s.setRows);
   const isExtracting = useExtractionStore((s) => s.isExtracting);
   const extractionProgress = useExtractionStore((s) => s.extractionProgress);
@@ -393,6 +394,9 @@ export default function ReclaimDashboard() {
           <div>
             <CardTitle className="text-xl tracking-tight">Denied Claims ({rows.length})</CardTitle>
             <CardDescription className="text-neutral-400">Click any row to paste clinical notes and generate an appeal.</CardDescription>
+            {duplicateNotice ? (
+              <p className="mt-2 text-sm text-amber-200">{duplicateNotice}</p>
+            ) : null}
           </div>
           {rows.length > 0 && !isSelectionMode && (
             <Button variant="outline" size="sm" onClick={() => setIsSelectionMode(true)}
