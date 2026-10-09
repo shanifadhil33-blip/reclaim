@@ -15,7 +15,8 @@ export async function getTrashedAppeals() {
     .not("deleted_at", "is", null)
     .order("deleted_at", { ascending: false });
 
-  return { error: error?.message, data };
+  if (error) console.error("[TRASH] list failed:", error.message);
+  return { error: error ? "load-failed" : undefined, data };
 }
 
 export async function restoreAppeal(appealId: string) {
@@ -31,7 +32,8 @@ export async function restoreAppeal(appealId: string) {
     .eq("id", appealId)
     .eq("user_id", user.id);
 
-  return { success: !error, error: error?.message };
+  if (error) console.error("[TRASH] restore failed:", error.message);
+  return { success: !error };
 }
 
 export async function permanentDeleteAppeal(appealId: string) {
@@ -47,7 +49,8 @@ export async function permanentDeleteAppeal(appealId: string) {
     .eq("id", appealId)
     .eq("user_id", user.id);
 
-  return { success: !error, error: error?.message };
+  if (error) console.error("[TRASH] delete failed:", error.message);
+  return { success: !error };
 }
 
 export async function emptyTrash() {
@@ -63,5 +66,6 @@ export async function emptyTrash() {
     .not("deleted_at", "is", null)
     .eq("user_id", user.id);
 
-  return { success: !error, error: error?.message };
+  if (error) console.error("[TRASH] empty failed:", error.message);
+  return { success: !error };
 }

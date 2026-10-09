@@ -40,7 +40,9 @@ function timeAgo(isoString: string): string {
 export default function ReclaimDashboard() {
   // ── Store (survives navigation) ──
   const rows = useExtractionStore((s) => s.rows);
+  const isLoaded = useExtractionStore((s) => s.isLoaded);
   const duplicateNotice = useExtractionStore((s) => s.duplicateNotice);
+  const dismissDuplicateNotice = useExtractionStore((s) => s.dismissDuplicateNotice);
   const setRows = useExtractionStore((s) => s.setRows);
   const isExtracting = useExtractionStore((s) => s.isExtracting);
   const extractionProgress = useExtractionStore((s) => s.extractionProgress);
@@ -194,7 +196,12 @@ export default function ReclaimDashboard() {
         }),
       });
       const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.message || data.error || "Failed to generate appeal.");
+      const failure = typeof data?.message === "string"
+        ? data.message
+        : typeof data?.error === "string"
+          ? data.error
+          : "Couldn't draft the letter. Please try again.";
+      if (!res.ok || data.error) throw new Error(failure);
 
       setRows(prev => prev.map(r => r.id === selectedRow.id ? {
         ...r,
@@ -212,12 +219,12 @@ export default function ReclaimDashboard() {
         payerName: editPayerName,
       } : r));
       toast.success("Appeal letter generated & saved!");
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : "An error occurred."); }
+    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : "Couldn't draft the letter. Please try again."); }
     finally { setIsGenerating(false); }
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-200 pb-12">
+    <div className="w-full max-w-7xl mx-auto pb-12">
       <div className="mb-8">
         <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-2">EOB Denial Triage</h1>
         <p className="text-neutral-400">Upload an Explanation of Benefits PDF. We extract only the denied claims.</p>
@@ -355,7 +362,7 @@ export default function ReclaimDashboard() {
 
       {/* Bulk Action Bar — only visible in selection mode */}
       {isSelectionMode && (
-        <div className="mb-4 flex items-center justify-between rounded-xl border border-white/10 bg-neutral-900/60 backdrop-blur-sm px-5 py-3 animate-in slide-in-from-top-2 duration-200">
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-white/10 bg-neutral-900/60 px-5 py-3 backdrop-blur-sm">
           <span className="text-sm text-neutral-300 font-medium">
             {selectedIds.size > 0
               ? <>{selectedIds.size} claim{selectedIds.size !== 1 ? "s" : ""} selected</>
@@ -395,7 +402,17 @@ export default function ReclaimDashboard() {
             <CardTitle className="text-xl tracking-tight">Denied Claims ({rows.length})</CardTitle>
             <CardDescription className="text-neutral-400">Click any row to paste clinical notes and generate an appeal.</CardDescription>
             {duplicateNotice ? (
-              <p className="mt-2 text-sm text-amber-200">{duplicateNotice}</p>
+              <div className="mt-2 flex items-center justify-between gap-3" role="status">
+                <p className="text-sm text-amber-200">{duplicateNotice}</p>
+                <button
+                  type="button"
+                  onClick={dismissDuplicateNotice}
+                  className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm text-amber-100"
+                  aria-label="Dismiss notice"
+                >
+                  Close
+                </button>
+              </div>
             ) : null}
           </div>
           {rows.length > 0 && !isSelectionMode && (
@@ -406,7 +423,13 @@ export default function ReclaimDashboard() {
           )}
         </CardHeader>
         <ul className="md:hidden divide-y divide-white/10">
-          {rows.length === 0 ? (
+          {!isLoaded ? (
+            <li className="space-y-3 px-4 py-6" aria-busy="true" aria-label="Loading worklist">
+              <div className="h-16 rounded-xl bg-white/5" />
+              <div className="h-16 rounded-xl bg-white/5" />
+              <div className="h-16 rounded-xl bg-white/5" />
+            </li>
+          ) : rows.length === 0 ? (
             <li className="px-4 py-12 text-center text-neutral-500">No claims loaded. Upload an EOB PDF to begin.</li>
           ) : rows.map((row) => (
             <li key={row.id}>
@@ -471,7 +494,17 @@ export default function ReclaimDashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.length === 0 ? (
+              {!isLoaded ? (
+                <TableRow className="border-0 hover:bg-transparent">
+                  <TableCell colSpan={isSelectionMode ? 10 : 8} className="py-6">
+                    <div className="space-y-3" aria-busy="true" aria-label="Loading worklist">
+                      <div className="h-12 rounded-lg bg-white/5" />
+                      <div className="h-12 rounded-lg bg-white/5" />
+                      <div className="h-12 rounded-lg bg-white/5" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : rows.length === 0 ? (
                 <TableRow className="border-0 hover:bg-transparent">
                   <TableCell colSpan={isSelectionMode ? 10 : 8} className="text-center py-16 text-neutral-500">No claims loaded. Upload an EOB PDF to begin.</TableCell>
                 </TableRow>
@@ -479,7 +512,7 @@ export default function ReclaimDashboard() {
                 rows.map((row) => (
                   <TableRow
                     key={row.id}
-                    className={`border-white/5 border-b hover:bg-white/5 cursor-pointer transition-colors ${selectedIds.has(row.id) ? "bg-indigo-500/5" : ""}`}
+                    className={`cursor-pointer border-b border-white/5 transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/5 ${selectedIds.has(row.id) ? "bg-indigo-500/5" : ""}`}
                     onClick={() => openModal(row)}
                   >
                     {isSelectionMode && (

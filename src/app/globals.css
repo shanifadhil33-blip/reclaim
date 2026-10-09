@@ -224,8 +224,14 @@ html {
 }
 
 :focus-visible {
-  outline: 2px solid rgba(129, 140, 248, 0.9);
+  outline: 1px solid rgba(165, 180, 252, 0.7);
   outline-offset: 2px;
+}
+
+html.using-pointer :focus,
+html.using-pointer :focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 @media (hover: none), (pointer: coarse) {
@@ -240,7 +246,7 @@ html {
 }
 
 @keyframes page-enter {
-  from { opacity: 0; }
+  from { opacity: 0.86; }
   to { opacity: 1; }
 }
 

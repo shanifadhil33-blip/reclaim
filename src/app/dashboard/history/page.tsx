@@ -31,10 +31,20 @@ export default async function HistoryPage() {
       userId: user.id,
       timestamp: new Date().toISOString(),
     });
+    return (
+      <div className="mx-auto w-full max-w-3xl pb-12">
+        <BackLink href="/dashboard" label="Worklist" />
+        <h1 className="mb-2 text-3xl font-semibold tracking-tight text-white">History</h1>
+        <p className="text-neutral-300">Couldn&apos;t load your letters.</p>
+        <Link href="/dashboard/history" className="mt-6 inline-flex h-11 items-center rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white">
+          Try again
+        </Link>
+      </div>
+    );
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-200 pb-12">
+    <div className="w-full max-w-7xl mx-auto pb-12">
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
           <BackLink href="/dashboard" label="Worklist" />

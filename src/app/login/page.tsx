@@ -10,14 +10,14 @@ import { PublicShell } from "@/components/public-shell";
 function AuthContent() {
   const searchParams = useSearchParams();
   const queryError = searchParams.get("error");
-  const [oauthError, setOauthError] = useState<string | null>(null);
+  const [oauthError, setOauthError] = useState(false);
   const [loading, setLoading] = useState(false);
-  const message = oauthError ?? (queryError ? queryError.replace(/\+/g, " ") : null);
+  const message = oauthError || queryError ? "Couldn't sign in. Try again." : null;
 
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      setOauthError(null);
+      setOauthError(false);
       const supabase = createClient();
       await supabase.auth.signOut({ scope: "local" });
 
@@ -36,7 +36,8 @@ function AuthContent() {
       });
       if (error) throw error;
     } catch (err: unknown) {
-      setOauthError(err instanceof Error ? err.message : "Failed to sign in with Google.");
+      console.error("[LOGIN]", err instanceof Error ? err.message : "sign-in failed");
+      setOauthError(true);
       setLoading(false);
     }
   };

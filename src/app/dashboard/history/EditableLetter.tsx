@@ -31,7 +31,8 @@ export default function EditableLetter({
     setIsSaving(false);
     
     if (error) {
-      toast.error("Failed to save changes: " + error.message);
+      console.error("[HISTORY] save failed:", error.message);
+      toast.error("Couldn't save that letter. Try again.");
     } else {
       toast.success("Letter updated successfully!");
       setIsEditing(false);

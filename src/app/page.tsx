@@ -41,7 +41,7 @@ export default function LandingPage() {
           </p>
           <Link
             href="/demo"
-            className="inline-flex h-14 items-center justify-center rounded-full bg-neutral-100 px-8 text-lg font-medium text-neutral-950 hover:bg-white"
+            className="inline-flex h-14 items-center justify-center rounded-full bg-neutral-100 px-8 text-lg font-medium text-neutral-950 hover:bg-white active:bg-neutral-300"
           >
             Try the demo
           </Link>

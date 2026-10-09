@@ -23,10 +23,7 @@ export async function GET(request: NextRequest) {
     const errMsg = `OAuth Callback Redirect Error: ${providerError} - ${providerErrorDescription}`
     console.error(errMsg)
     Sentry.captureMessage(errMsg, 'error')
-    const message = providerErrorDescription || providerError
-    return NextResponse.redirect(
-      `${origin}/login?error=${encodeURIComponent(message)}`
-    )
+    return NextResponse.redirect(`${origin}/login?error=sign-in`)
   }
 
   if (!code) {
@@ -63,7 +60,7 @@ export async function GET(request: NextRequest) {
     Sentry.captureException(error)
     return applyCookies(
       NextResponse.redirect(
-        `${origin}/login?error=${encodeURIComponent(error.message || 'Invalid auth code')}`
+        `${origin}/login?error=sign-in`
       ),
       cookieJar,
       headerJar

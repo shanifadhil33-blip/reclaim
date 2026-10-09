@@ -16,10 +16,10 @@ export function DeleteAppealButton({ appealId, onDeleted }: { appealId: string; 
   const remove = async () => {
     setPending(true);
     setError(null);
-    const { success, error: message } = await softDeleteAppeal(appealId);
+    const { success } = await softDeleteAppeal(appealId);
     if (!success) {
       setPending(false);
-      setError(message ? `Couldn't move it: ${message}` : "Couldn't move it to the recycle bin.");
+      setError("Couldn't move it to the recycle bin.");
       return;
     }
     setPending(false);
@@ -71,10 +71,10 @@ export function ClearAllAppealsButton() {
   const clear = async () => {
     setPending(true);
     setError(null);
-    const { success, error: message } = await clearAllHistory();
+    const { success } = await clearAllHistory();
     if (!success) {
       setPending(false);
-      setError(message ? `Couldn't clear history: ${message}` : "Couldn't clear history.");
+      setError("Couldn't clear history.");
       return;
     }
     toast.success("History moved to the recycle bin.");

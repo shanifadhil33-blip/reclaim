@@ -25,7 +25,7 @@ export default async function TrashPage() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-200 pb-12">
+    <div className="w-full max-w-7xl mx-auto pb-12">
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
           <BackLink href="/dashboard/history" label="History" />
@@ -34,7 +34,7 @@ export default async function TrashPage() {
         </div>
       </div>
       
-      <TrashClient initialAppeals={appeals || []} />
+      <TrashClient initialAppeals={appeals || []} accountLoadFailed={Boolean(error)} />
     </div>
   );
 }

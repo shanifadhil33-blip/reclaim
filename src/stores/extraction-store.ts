@@ -52,10 +52,60 @@ interface ExtractionState {
   clearQueue: () => void;
   processQueue: () => Promise<void>;
   moveToTrash: (claims: DenialRow[]) => void;
+  dismissDuplicateNotice: () => void;
 }
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : "Request failed";
+}
+
+const DUPLICATE_NOTICE_MS = 4000;
+let duplicateNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+let duplicateToastId: string | number | null = null;
+
+type NoticeStore = {
+  getState: () => ExtractionState;
+  setState: (partial: Partial<ExtractionState>) => void;
+};
+
+function clearDuplicateNotice(store: NoticeStore) {
+  if (duplicateNoticeTimer !== null) {
+    clearTimeout(duplicateNoticeTimer);
+    duplicateNoticeTimer = null;
+  }
+  const toastId = duplicateToastId;
+  duplicateToastId = null;
+  if (toastId !== null) toast.dismiss(toastId);
+  if (store.getState().duplicateNotice) {
+    store.setState({ duplicateNotice: "" });
+  }
+}
+
+function publishDuplicateNotice(store: NoticeStore, message: string) {
+  clearDuplicateNotice(store);
+  if (!message) return;
+  store.setState({ duplicateNotice: message });
+  const id = toast(message, {
+    duration: DUPLICATE_NOTICE_MS,
+    closeButton: true,
+    onDismiss: () => {
+      if (duplicateToastId !== id) return;
+      duplicateToastId = null;
+      store.setState({ duplicateNotice: "" });
+    },
+    onAutoClose: () => {
+      if (duplicateToastId !== id) return;
+      duplicateToastId = null;
+      store.setState({ duplicateNotice: "" });
+    },
+  });
+  duplicateToastId = id;
+  duplicateNoticeTimer = setTimeout(() => {
+    duplicateNoticeTimer = null;
+    if (store.getState().duplicateNotice === message) {
+      store.setState({ duplicateNotice: "" });
+    }
+  }, DUPLICATE_NOTICE_MS);
 }
 
 const CHUNK_SIZE = 3; // pages per API call — kept small for Vercel's 4.5MB body limit
@@ -164,6 +214,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
   },
 
   addFilesToQueue: (files) => {
+    clearDuplicateNotice({ getState: get, setState: (partial) => set(partial) });
     const pdfs = Array.from(files).filter(
       (f) => f.type === "application/pdf" || f.name.endsWith(".pdf")
     );
@@ -180,6 +231,10 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
   },
 
   clearQueue: () => set({ queuedFiles: [] }),
+
+  dismissDuplicateNotice: () => {
+    clearDuplicateNotice({ getState: get, setState: (partial) => set(partial) });
+  },
 
   moveToTrash: (claimsToTrash) => {
     const existing = JSON.parse(localStorage.getItem("reclaim_eob_trash") || "[]");
@@ -211,6 +266,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
       duration: 6000,
     });
 
+    clearDuplicateNotice({ getState: get, setState: (partial) => set(partial) });
     set({
       isExtracting: true,
       duplicateNotice: "",
@@ -476,8 +532,11 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
       }
 
       // Done
-      const duplicateNotice = alreadyListed > 0 ? duplicateWorklistNotice(alreadyListed) : "";
-      set({ progressPercent: 100, queuedFiles: [], duplicateNotice });
+      set({ progressPercent: 100, queuedFiles: [] });
+      publishDuplicateNotice(
+        { getState: get, setState: (partial) => set(partial) },
+        alreadyListed > 0 ? duplicateWorklistNotice(alreadyListed) : ""
+      );
 
       if (totalDenialsFound > 0) {
         toast.success(
@@ -491,7 +550,6 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
             : "No denied claims found in any of the uploaded EOBs."
         );
       }
-      if (duplicateNotice) toast(duplicateNotice);
     } catch (err: unknown) {
       console.error("[PIPELINE FATAL]", err);
       toast.error(errorText(err) || "Failed to process PDFs. Please try again.");
